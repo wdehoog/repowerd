@@ -2,13 +2,64 @@
 
 #include "light_control.h"
 
-repowerd::UBPortsLightControl::UBPortsLightControl() {
+#include "src/core/log.h"
+
+namespace
+{
+char const* const log_tag = "UBPortsLightControl";
+char const* const dbus_upstart_name = "com.ubuntu.Upstart";
+char const* const dbus_upstart_path = "/com/ubuntu/Upstart";
+char const* const dbus_upstart_interface = "com.ubuntu.Upstart0_6";
 }
 
+repowerd::UBPortsLightControl::UBPortsLightControl(
+   std::shared_ptr<Log> const& log,
+   std::string const& dbus_bus_address)
+  : log{log},
+    dbus_connection{dbus_bus_address} {
+}
+
+void repowerd::UBPortsLightControl::start_processing()
+{
+    dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
+        dbus_connection,
+        dbus_upstart_name,
+        dbus_upstart_interface,
+        nullptr,
+        dbus_upstart_path,
+        [this] (
+            GDBusConnection* connection,
+            gchar const* sender,
+            gchar const* object_path,
+            gchar const* interface_name,
+            gchar const* signal_name,
+            GVariant* parameters)
+        {
+            handle_dbus_signal(
+                connection, sender, object_path, interface_name,
+                signal_name, parameters);
+        });
+}
+
+void repowerd::UBPortsLightControl::handle_dbus_signal(
+    GDBusConnection* /*connection*/,
+    gchar const* /*sender*/,
+    gchar const* /*object_path*/,
+    gchar const* /*interface_name*/,
+    gchar const* signal_name_cstr,
+    GVariant* /*parameters*/)
+{
+    std::string const signal_name{signal_name_cstr ? signal_name_cstr : ""};
+
+    if (signal_name == "PropertiesChanged") {
+        log->log(log_tag, "dbus signal PropertiesChanged");
+    }
+        
+}
 
 void repowerd::UBPortsLightControl::setState(State newState) {
     if (!init()) {
-	//qWarning() << "No lights device";
+	log->log(log_tag, "No lights device");
         return;
     }
 
@@ -79,10 +130,10 @@ bool repowerd::UBPortsLightControl::init() {
             turnOff();
             return true;
         } else {
-            //qWarning() << "Failed to access notification lights";
+	    log->log(log_tag, "Failed to access notification lights");
         }
     } else {
-        //qWarning() << "Failed to initialize lights hardware.";
+	log->log(log_tag, "Failed to initialize lights hardware.");
     }
     return false;
 }
@@ -97,7 +148,7 @@ void repowerd::UBPortsLightControl::turnOff() {
     state.brightnessMode = 0;
 
     if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-        //qWarning() << "Failed to turn the light off";
+	log->log(log_tag, "Failed to turn the light off");
     }
 }
 
@@ -112,7 +163,7 @@ void repowerd::UBPortsLightControl::turnOn() {
     state.brightnessMode = BRIGHTNESS_MODE_USER;
 
     if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-         //qWarning() << "Failed to turn the light off";
+	log->log(log_tag, "Failed to turn the light on");
     }
 }
 

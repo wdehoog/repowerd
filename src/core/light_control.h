@@ -25,6 +25,8 @@ public:
     virtual int offMillisec() = 0;
     virtual void setOffMillisec(int offMs) = 0;
 
+    virtual void start_processing() = 0;
+
 protected:
     LightControl() = default;
     LightControl (LightControl const&) = default;

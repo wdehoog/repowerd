@@ -15,12 +15,19 @@ extern "C" {
 }
 #pragma GCC diagnostic pop
 
+#include "dbus_connection_handle.h"
+#include "dbus_event_loop.h"
+
 namespace repowerd {
+
+class Log;
 
 class UBPortsLightControl : public LightControl
 {
 public:
-    UBPortsLightControl();
+    UBPortsLightControl(
+        std::shared_ptr<Log> const& log,
+        std::string const& dbus_bus_address);
 
     void setState(State newState) override;
     State state() override;
@@ -29,6 +36,8 @@ public:
     void setOnMillisec(int onMs) override;
     int offMillisec() override;
     void setOffMillisec(int offMs) override;
+
+    void start_processing() override;
 
 protected:
     bool init();
@@ -40,6 +49,20 @@ protected:
     int m_onMs;
     int m_offMs;
     uint m_color;
+    void handle_dbus_signal(
+
+    GDBusConnection* connection,
+    gchar const* sender,
+    gchar const* object_path,
+    gchar const* interface_name,
+    gchar const* signal_name,
+    GVariant* parameters);
+
+    std::shared_ptr<Log> const log;
+
+    DBusConnectionHandle dbus_connection;
+    DBusEventLoop dbus_event_loop;
+    HandlerRegistration dbus_signal_handler_registration;
 
 
 };

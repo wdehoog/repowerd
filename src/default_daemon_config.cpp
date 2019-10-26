@@ -36,6 +36,7 @@
 #include "adapters/sysfs_backlight.h"
 #include "adapters/syslog_log.h"
 #include "adapters/system_shutdown_control.h"
+#include "adapters/light_control.h"
 #include "adapters/ubuntu_light_sensor.h"
 #include "adapters/ubuntu_performance_booster.h"
 #include "adapters/ubuntu_proximity_sensor.h"
@@ -464,6 +465,25 @@ repowerd::DefaultDaemonConfig::the_filesystem()
         filesystem = std::make_shared<RealFilesystem>();
 
     return filesystem;
+}
+
+std::shared_ptr<repowerd::UBPortsLightControl>
+repowerd::DefaultDaemonConfig::the_light_control()
+{
+    if (!light_control)
+    try
+    {
+        light_control = std::make_shared<UBPortsLightControl>(
+            the_log(), the_dbus_bus_address());
+    }
+    catch (std::exception const& e)
+    {
+        the_log()->log(log_tag, "Failed to create UBPortsLightControl: %s", e.what());
+        the_log()->log(log_tag, "Falling back to NullLightSensor");
+        // ToDo light_control = std::make_shared<NullLightControl>();
+    }
+
+    return light_control;
 }
 
 std::shared_ptr<repowerd::LightSensor>
