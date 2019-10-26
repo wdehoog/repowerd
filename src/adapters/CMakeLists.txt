@@ -34,6 +34,7 @@ set(
     event_loop_timer.cpp
     fd.cpp
     libsuspend_suspend_control.cpp
+    light_control.cpp
     monotone_spline.cpp
     null_log.cpp
     ofono_voice_call_service.cpp
