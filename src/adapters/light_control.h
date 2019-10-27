@@ -64,6 +64,7 @@ protected:
     DBusEventLoop dbus_event_loop;
     HandlerRegistration dbus_signal_handler_registration;
 
+    void updateLight();
 
 };
 

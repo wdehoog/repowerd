@@ -79,12 +79,26 @@ repowerd::UBPortsLightControl::State repowerd::UBPortsLightControl::state() {
     return m_state;
 }
 
+void repowerd::UBPortsLightControl::updateLight() {
+    light_state_t state;
+    memset(&state, 0, sizeof(light_state_t));
+    state.color = m_color;
+    state.flashMode = LIGHT_FLASH_TIMED;
+    state.flashOnMS = m_onMs;
+    state.flashOffMS = m_offMs;
+    state.brightnessMode = BRIGHTNESS_MODE_USER;
+    if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
+	log->log(log_tag, "Failed to update the light");
+    }
+}
+
 void repowerd::UBPortsLightControl::setColor(int r, int g, int b) {
     uint color = (0xff << 24) | (r << 16) | (g << 8) | (b << 0);
-    if (m_color  != color) {
+    if (m_color != color) {
         m_color = color;
+        if (m_state == UBPortsLightControl::On)
+	    updateLight();
         //Q_EMIT colorChanged(m_color);
-        // FIXME: update the color if the light is already on
     }
 }
 
@@ -95,10 +109,10 @@ int repowerd::UBPortsLightControl::onMillisec() {
 void repowerd::UBPortsLightControl::setOnMillisec(int onMs) {
     if (m_onMs != onMs) {
         m_onMs = onMs;
+        if (m_state == UBPortsLightControl::On)
+	    updateLight();
         //Q_EMIT onMillisecChanged(m_onMs);
-        // FIXME: update the property if the light is already on
     }
-
 }
 
 int repowerd::UBPortsLightControl::offMillisec() {
@@ -108,8 +122,9 @@ int repowerd::UBPortsLightControl::offMillisec() {
 void repowerd::UBPortsLightControl::setOffMillisec(int offMs) {
     if (m_offMs != offMs) {
         m_offMs = offMs;
+        if (m_state == UBPortsLightControl::On)
+	    updateLight();
         //Q_EMIT offMillisecChanged(m_offMs);
-        // FIXME: update the property if the light is already on
     }
 }
 
