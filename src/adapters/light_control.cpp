@@ -14,7 +14,10 @@ char const* const log_tag = "UBPortsLightControl";
 
 repowerd::UBPortsLightControl::UBPortsLightControl(
    std::shared_ptr<Log> const& log)
-  : log{log} {
+  : m_lightDevice(0),
+    m_state(State::Off),
+    log{log} {
+    log->log(log_tag, "contructor");
 }
 
 /*repowerd::UBPortsLightControl::UBPortsLightControl(
@@ -26,6 +29,7 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
 
 void repowerd::UBPortsLightControl::start_processing()
 {
+    log->log(log_tag, "start_processing");
     // call init() here?
 
     /*dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
