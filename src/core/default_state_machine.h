@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "power_source.h"
 #include "state_machine.h"
 #include "daemon_config.h"
 #include "display_power_change_reason.h"
@@ -47,7 +48,7 @@ public:
     void handle_power_button_press() override;
     void handle_power_button_release() override;
 
-    void handle_power_source_change() override;
+    void handle_power_source_change(BatteryInfo*) override;
     void handle_power_source_critical() override;
 
     void handle_proximity_far() override;
@@ -100,6 +101,7 @@ private:
     std::shared_ptr<BrightnessControl> const brightness_control;
     std::shared_ptr<DisplayPowerControl> const display_power_control;
     std::shared_ptr<DisplayPowerEventSink> const display_power_event_sink;
+    std::shared_ptr<LightControl> const light_control;
     std::shared_ptr<Log> const log;
     std::shared_ptr<ModemPowerControl> const modem_power_control;
     std::shared_ptr<PerformanceBooster> const performance_booster;

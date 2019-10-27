@@ -33,7 +33,7 @@ int main()
     power_source->start_processing();
 
     auto registration = power_source->register_power_source_change_handler(
-        []
+        [](repowerd::BatteryInfo*)
         {
             std::cout << "Power source changed" << std::endl;
         });

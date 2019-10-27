@@ -68,13 +68,13 @@ private:
     bool is_using_battery_power();
     void disallow_suspend_temporarily();
 
-    struct BatteryInfo
+    /*struct BatteryInfo
     {
         bool is_present;
         uint32_t state;
         double percentage;
         double temperature;
-    };
+    };*/
 
     std::shared_ptr<Log> const log;
     std::shared_ptr<TemporarySuspendInhibition> const temporary_suspend_inhibition;
@@ -85,7 +85,7 @@ private:
     HandlerRegistration dbus_signal_handler_registration;
 
     PowerSourceChangeHandler power_source_change_handler;
-    PowerSourceChangeHandler power_source_critical_handler;
+    PowerSourceCriticalHandler power_source_critical_handler;
 
     std::unordered_map<std::string,BatteryInfo> batteries;
 };

@@ -25,12 +25,22 @@
 namespace repowerd
 {
 
-using PowerSourceChangeHandler = std::function<void()>;
+
+class BatteryInfo {
+    public:
+        bool is_present;
+        uint32_t state;
+        double percentage;
+        double temperature;
+};
+
+using PowerSourceChangeHandler = std::function<void(BatteryInfo *)>;
 using PowerSourceCriticalHandler = std::function<void()>;
 
 class PowerSource
 {
 public:
+
     virtual ~PowerSource() = default;
 
     virtual void start_processing() = 0;

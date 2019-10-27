@@ -36,7 +36,7 @@ public:
         PowerSourceChangeHandler const& handler) override;
 
     HandlerRegistration register_power_source_critical_handler(
-        PowerSourceChangeHandler const& handler) override;
+        PowerSourceCriticalHandler const& handler) override;
 
     void emit_power_source_change();
     void emit_power_source_critical();
@@ -46,7 +46,7 @@ public:
         MOCK_METHOD0(start_processing, void());
         MOCK_METHOD1(register_power_source_change_handler, void(PowerSourceChangeHandler const&));
         MOCK_METHOD0(unregister_power_source_change_handler, void());
-        MOCK_METHOD1(register_power_source_critical_handler, void(PowerSourceChangeHandler const&));
+        MOCK_METHOD1(register_power_source_critical_handler, void(PowerSourceCriticalHandler const&));
         MOCK_METHOD0(unregister_power_source_critical_handler, void());
     };
     testing::NiceMock<Mock> mock;

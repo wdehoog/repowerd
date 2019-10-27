@@ -22,6 +22,7 @@
 #include "display_power_control.h"
 #include "display_power_event_sink.h"
 #include "infinite_timeout.h"
+#include "light_control.h"
 #include "log.h"
 #include "modem_power_control.h"
 #include "performance_booster.h"
@@ -41,6 +42,7 @@ repowerd::DefaultStateMachine::DefaultStateMachine(DaemonConfig& config)
     : brightness_control{config.the_brightness_control()},
       display_power_control{config.the_display_power_control()},
       display_power_event_sink{config.the_display_power_event_sink()},
+      light_control{config.the_light_control()},
       log{config.the_log()},
       modem_power_control{config.the_modem_power_control()},
       performance_booster{config.the_performance_booster()},
@@ -264,7 +266,7 @@ void repowerd::DefaultStateMachine::handle_power_button_release()
     power_button_long_press_alarm_id = AlarmId::invalid;
 }
 
-void repowerd::DefaultStateMachine::handle_power_source_change()
+void repowerd::DefaultStateMachine::handle_power_source_change(repowerd::BatteryInfo * batteryInfo)
 {
     log->log(log_tag, "handle_power_source_change");
 
@@ -273,9 +275,21 @@ void repowerd::DefaultStateMachine::handle_power_source_change()
         brighten_display();
         schedule_reduced_user_inactivity_alarm();
     }
-    else if (proximity_sensor->proximity_state() == ProximityState::far)
-    {
-        turn_on_display_with_reduced_timeout(DisplayPowerChangeReason::notification);
+    else {
+        if (proximity_sensor->proximity_state() == ProximityState::far)
+        {
+            turn_on_display_with_reduced_timeout(DisplayPowerChangeReason::notification);
+        }
+	if(batteryInfo) {
+	    if(batteryInfo->state == 1) { // charging
+		if(batteryInfo->percentage == 100)
+                  light_control->setColor(0,0xFF,0);
+		else
+                  light_control->setColor(0xFF,0xFF,0xFF);
+		light_control->setState(LightControl::State::On);
+	    } else
+		light_control->setState(LightControl::State::Off);
+	}
     }
 }
 

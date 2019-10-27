@@ -216,10 +216,10 @@ repowerd::Daemon::register_event_handlers()
 
     registrations.push_back(
         power_source->register_power_source_change_handler(
-            [this]
+            [this] (repowerd::BatteryInfo * value)
             {
                 enqueue_action(
-                    [this] { state_machine->handle_power_source_change(); });
+                    [this,value] { state_machine->handle_power_source_change(value); });
             }));
 
     registrations.push_back(
@@ -241,6 +241,7 @@ void repowerd::Daemon::start_event_processing()
     power_source->start_processing();
     user_activity->start_processing();
     voice_call_service->start_processing();
+    light_control->start_processing(); // currently empty
 }
 
 void repowerd::Daemon::enqueue_action(Action const& action)

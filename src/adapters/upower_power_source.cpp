@@ -27,6 +27,7 @@
 namespace
 {
 char const* const log_tag = "UPowerPowerSource";
+auto const null_batteryinfo_handler = [](repowerd::BatteryInfo*){};
 auto const null_handler = []{};
 char const* const dbus_upower_name = "org.freedesktop.UPower";
 char const* const dbus_upower_path = "/org/freedesktop/UPower";
@@ -72,7 +73,7 @@ repowerd::UPowerPowerSource::UPowerPowerSource(
       temporary_suspend_inhibition{temporary_suspend_inhibition},
       critical_temperature{get_critical_temperature(device_config)},
       dbus_connection{dbus_bus_address},
-      power_source_change_handler{null_handler},
+      power_source_change_handler{null_batteryinfo_handler},
       power_source_critical_handler{null_handler}
 {
 }
@@ -107,7 +108,7 @@ repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source
     return EventLoopHandlerRegistration{
         dbus_event_loop,
             [this, &handler] { this->power_source_change_handler = handler; },
-            [this] { this->power_source_change_handler = null_handler; }};
+            [this] { this->power_source_change_handler = null_batteryinfo_handler; }};
 }
 
 repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source_critical_handler(
@@ -357,7 +358,7 @@ void repowerd::UPowerPowerSource::change_device(
         power_source_critical_handler();
 
     if (change)
-        power_source_change_handler();
+        power_source_change_handler(&new_info);
 }
 
 GVariant* repowerd::UPowerPowerSource::get_device_properties(std::string const& device)

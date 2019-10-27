@@ -34,12 +34,12 @@ repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_change_
         [this]
         {
             mock.unregister_power_source_change_handler();
-            this->power_source_change_handler = []{};
+            this->power_source_change_handler = [](repowerd::BatteryInfo*){};
         }};
 }
 
 repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_critical_handler(
-    PowerSourceChangeHandler const& handler)
+    PowerSourceCriticalHandler const& handler)
 {
     mock.register_power_source_critical_handler(handler);
     this->power_source_critical_handler = handler;
@@ -53,7 +53,8 @@ repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_critica
 
 void rt::FakePowerSource::emit_power_source_change()
 {
-    power_source_change_handler();
+    BatteryInfo bi;
+    power_source_change_handler(&bi);
 }
 
 void rt::FakePowerSource::emit_power_source_critical()
