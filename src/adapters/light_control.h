@@ -25,9 +25,10 @@ class Log;
 class UBPortsLightControl : public LightControl
 {
 public:
-    UBPortsLightControl(
-        std::shared_ptr<Log> const& log,
-        std::string const& dbus_bus_address);
+    UBPortsLightControl(std::shared_ptr<Log> const& log);
+    //UBPortsLightControl(
+    //    std::shared_ptr<Log> const& log,
+    //    std::string const& dbus_bus_address);
 
     void setState(State newState) override;
     State state() override;
@@ -60,9 +61,9 @@ protected:
 
     std::shared_ptr<Log> const log;
 
-    DBusConnectionHandle dbus_connection;
-    DBusEventLoop dbus_event_loop;
-    HandlerRegistration dbus_signal_handler_registration;
+    //DBusConnectionHandle dbus_connection;
+    //DBusEventLoop dbus_event_loop;
+    //HandlerRegistration dbus_signal_handler_registration;
 
     void updateLight();
 
