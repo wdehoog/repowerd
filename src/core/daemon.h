@@ -51,6 +51,7 @@ private:
 
     std::shared_ptr<BrightnessControl> const brightness_control;
     std::shared_ptr<ClientRequests> const client_requests;
+    std::shared_ptr<LightControl> const light_control;
     std::shared_ptr<NotificationService> const notification_service;
     std::shared_ptr<PowerButton> const power_button;
     std::shared_ptr<PowerSource> const power_source;

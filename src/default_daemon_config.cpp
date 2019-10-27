@@ -467,7 +467,7 @@ repowerd::DefaultDaemonConfig::the_filesystem()
     return filesystem;
 }
 
-std::shared_ptr<repowerd::UBPortsLightControl>
+std::shared_ptr<repowerd::LightControl>
 repowerd::DefaultDaemonConfig::the_light_control()
 {
     if (!light_control)

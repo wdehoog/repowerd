@@ -21,6 +21,7 @@
 #include "brightness_control.h"
 #include "client_requests.h"
 #include "display_power_control.h"
+#include "light_control.h"
 #include "notification_service.h"
 #include "power_button.h"
 #include "power_source.h"
@@ -35,6 +36,7 @@
 repowerd::Daemon::Daemon(DaemonConfig& config)
     : brightness_control{config.the_brightness_control()},
       client_requests{config.the_client_requests()},
+      light_control{config.the_light_control()},
       notification_service{config.the_notification_service()},
       power_button{config.the_power_button()},
       power_source{config.the_power_source()},

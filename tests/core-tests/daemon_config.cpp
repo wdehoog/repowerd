@@ -71,6 +71,11 @@ std::shared_ptr<repowerd::ModemPowerControl> rt::DaemonConfig::the_modem_power_c
     return the_mock_modem_power_control();
 }
 
+std::shared_ptr<repowerd::LightControl> rt::DaemonConfig::the_light_control()
+{
+    return NULL; // ToDo the_fake_light_control();
+}
+
 std::shared_ptr<repowerd::NotificationService> rt::DaemonConfig::the_notification_service()
 {
     return the_fake_notification_service();

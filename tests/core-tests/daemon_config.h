@@ -54,6 +54,7 @@ public:
     std::shared_ptr<DisplayPowerEventSink> the_display_power_event_sink() override;
     std::shared_ptr<Log> the_log() override;
     std::shared_ptr<ModemPowerControl> the_modem_power_control() override;
+    std::shared_ptr<LightControl> the_light_control() override;
     std::shared_ptr<NotificationService> the_notification_service() override;
     std::shared_ptr<PerformanceBooster> the_performance_booster() override;
     std::shared_ptr<PowerButton> the_power_button() override;
