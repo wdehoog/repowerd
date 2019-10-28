@@ -195,7 +195,7 @@ void repowerd::UBPortsLightControl::turnOn() {
 }
 
 void repowerd::UBPortsLightControl::notify_battery_info(BatteryInfo * batteryInfo) {
-    log->log(log_tag, "notify_battery_info");
+    log->log(log_tag, "notify_battery_info state: %d, percentage: %f", batteryInfo->state, batteryInfo->percentage);
     this->batteryInfo.is_present = batteryInfo->is_present;
     this->batteryInfo.state = batteryInfo->state;
     this->batteryInfo.percentage = batteryInfo->percentage;
@@ -210,10 +210,10 @@ void repowerd::UBPortsLightControl::notify_display_state(DisplayState displaySta
 }
 
 void repowerd::UBPortsLightControl::update_light_state() {
+    log->log(log_tag, "update_light_state ds: %d, bs: %d", displayState, batteryInfo.state);
+
     // show charging and full but only when display is off
     if(displayState == DisplayOff) {
-
-        log->log(log_tag, "  state: %d", batteryInfo.state);
         if(batteryInfo.state == 1) { // charging
             if(batteryInfo.percentage == 100)
                 setColor(0,0xFF,0);

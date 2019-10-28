@@ -258,7 +258,7 @@ void repowerd::UPowerPowerSource::add_device_if_battery(std::string const& devic
                  battery_info.temperature);
 
         batteries[device] = battery_info;
-        power_source_change_handler(&battery_info);
+        power_source_change_handler(&batteries[device]);
     }
 }
 
