@@ -275,21 +275,14 @@ void repowerd::DefaultStateMachine::handle_power_source_change(repowerd::Battery
         brighten_display();
         schedule_reduced_user_inactivity_alarm();
     }
-    else {
-        if (proximity_sensor->proximity_state() == ProximityState::far)
-        {
-            turn_on_display_with_reduced_timeout(DisplayPowerChangeReason::notification);
-        }
-	if(batteryInfo) {
-	    if(batteryInfo->state == 1) { // charging
-		if(batteryInfo->percentage == 100)
-                  light_control->setColor(0,0xFF,0);
-		else
-                  light_control->setColor(0xFF,0xFF,0xFF);
-		light_control->setState(LightControl::State::On);
-	    } else
-		light_control->setState(LightControl::State::Off);
-	}
+    else if (proximity_sensor->proximity_state() == ProximityState::far)
+    {
+        turn_on_display_with_reduced_timeout(DisplayPowerChangeReason::notification);
+    }
+
+    if(batteryInfo) 
+    {
+        light_control->notify_battery_info(batteryInfo);
     }
 }
 
@@ -493,6 +486,7 @@ void repowerd::DefaultStateMachine::turn_off_display(
     performance_booster->disable_interactive_mode();
     if (reason != DisplayPowerChangeReason::proximity)
         suspend_control->allow_suspend(suspend_id);
+    light_control->notify_display_state(LightControl::DisplayOff);
 }
 
 void repowerd::DefaultStateMachine::turn_on_display_without_timeout(
@@ -506,6 +500,7 @@ void repowerd::DefaultStateMachine::turn_on_display_without_timeout(
     brighten_display();
     modem_power_control->set_normal_power_mode();
     display_power_event_sink->notify_display_power_on(reason);
+    light_control->notify_display_state(LightControl::DisplayOn);
 }
 
 void repowerd::DefaultStateMachine::turn_on_display_with_normal_timeout(

@@ -218,8 +218,11 @@ repowerd::Daemon::register_event_handlers()
         power_source->register_power_source_change_handler(
             [this] (repowerd::BatteryInfo * value)
             {
+	    printf("handle_power_source_change callback in daemon\n");
                 enqueue_action(
-                    [this,value] { state_machine->handle_power_source_change(value); });
+                    [this,value] {
+	    printf("handle_power_source_change callback in daemon enqueue_action\n");
+		    state_machine->handle_power_source_change(value); });
             }));
 
     registrations.push_back(

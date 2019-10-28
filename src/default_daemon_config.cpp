@@ -473,9 +473,8 @@ repowerd::DefaultDaemonConfig::the_light_control()
     if (!light_control)
     try
     {
-        light_control = std::make_shared<UBPortsLightControl>(the_log());
-        //light_control = std::make_shared<UBPortsLightControl>(
-        //    the_log(), the_dbus_bus_address());
+        light_control = std::make_shared<UBPortsLightControl>(
+            the_log(), the_dbus_bus_address());
     }
     catch (std::exception const& e)
     {

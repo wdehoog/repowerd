@@ -7,37 +7,34 @@
 namespace
 {
 char const* const log_tag = "UBPortsLightControl";
-//char const* const dbus_upstart_name = "com.ubuntu.Upstart";
-//char const* const dbus_upstart_path = "/com/ubuntu/Upstart";
-//char const* const dbus_upstart_interface = "com.ubuntu.Upstart0_6";
+char const* const dbus_im_name = "com.canonical.indicator.messages";
+char const* const dbus_im_path = "/com/canonical/indicator/messages";
+char const* const dbus_im_interface = "";
 }
 
 repowerd::UBPortsLightControl::UBPortsLightControl(
-   std::shared_ptr<Log> const& log)
-  : m_lightDevice(0),
-    m_state(State::Off),
-    log{log} {
-    log->log(log_tag, "contructor");
-}
-
-/*repowerd::UBPortsLightControl::UBPortsLightControl(
    std::shared_ptr<Log> const& log,
    std::string const& dbus_bus_address)
-  : log{log},
-    dbus_connection{dbus_bus_address} {
-}*/
+  : m_lightDevice(0),
+    m_state(State::Off),
+    log{log},
+    dbus_connection{dbus_bus_address},
+    displayState(DisplayState::DisplayUnknown) {
+    log->log(log_tag, "contructor");
+}
 
 void repowerd::UBPortsLightControl::start_processing()
 {
     log->log(log_tag, "start_processing");
+
     // call init() here?
 
-    /*dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
+    dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
         dbus_connection,
-        dbus_upstart_name,
-        dbus_upstart_interface,
+        dbus_im_name,
+        dbus_im_interface,
         nullptr,
-        dbus_upstart_path,
+        dbus_im_path,
         [this] (
             GDBusConnection* connection,
             gchar const* sender,
@@ -49,25 +46,25 @@ void repowerd::UBPortsLightControl::start_processing()
             handle_dbus_signal(
                 connection, sender, object_path, interface_name,
                 signal_name, parameters);
-        });*/
+        });
 }
 
-/*void repowerd::UBPortsLightControl::handle_dbus_signal(
-    GDBusConnection* // connection,
-    gchar const* ,   // sender
-    gchar const* ,   // object_path
-    gchar const* ,   // interface_name
+void repowerd::UBPortsLightControl::handle_dbus_signal(
+    GDBusConnection*, // connection
+    gchar const* ,    // sender
+    gchar const* ,    // object_path
+    gchar const* ,    // interface_name
     gchar const* signal_name_cstr,
-    GVariant* )      // parameters
+    GVariant* )       // parameters
 {
     std::string const signal_name{signal_name_cstr ? signal_name_cstr : ""};
 
-    if (signal_name == "PropertiesChanged") {
-        log->log(log_tag, "dbus signal PropertiesChanged");
-	// get new battery info from UPowerSource
-    }
+    //if (signal_name == "PropertiesChanged") {
+    //    log->log(log_tag, "dbus signal PropertiesChanged");
+	// 
+    //}
         
-}*/
+}
 
 void repowerd::UBPortsLightControl::setState(State newState) {
     if (!init()) {
@@ -104,7 +101,8 @@ void repowerd::UBPortsLightControl::updateLight() {
     }
 }
 
-void repowerd::UBPortsLightControl::setColor(int r, int g, int b) {
+void repowerd::UBPortsLightControl::setColor(uint r, uint g, uint b) {
+    log->log(log_tag, "setColor");
     uint color = (0xff << 24) | (r << 16) | (g << 8) | (b << 0);
     if (m_color != color) {
         m_color = color;
@@ -166,6 +164,7 @@ bool repowerd::UBPortsLightControl::init() {
 }
 
 void repowerd::UBPortsLightControl::turnOff() {
+    log->log(log_tag, "turnOff");
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
     state.color = 0x00000000;
@@ -180,6 +179,7 @@ void repowerd::UBPortsLightControl::turnOff() {
 }
 
 void repowerd::UBPortsLightControl::turnOn() {
+    log->log(log_tag, "turnOn");
     // pulse
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
@@ -190,7 +190,38 @@ void repowerd::UBPortsLightControl::turnOn() {
     state.brightnessMode = BRIGHTNESS_MODE_USER;
 
     if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-	log->log(log_tag, "Failed to turn the light on");
+        log->log(log_tag, "Failed to turn the light on");
     }
 }
 
+void repowerd::UBPortsLightControl::notify_battery_info(BatteryInfo * batteryInfo) {
+    log->log(log_tag, "notify_battery_info");
+    this->batteryInfo.is_present = batteryInfo->is_present;
+    this->batteryInfo.state = batteryInfo->state;
+    this->batteryInfo.percentage = batteryInfo->percentage;
+    this->batteryInfo.temperature = batteryInfo->temperature;
+    update_light_state();
+}
+
+void repowerd::UBPortsLightControl::notify_display_state(DisplayState displayState) {
+    log->log(log_tag, "notify_display_state %d", displayState);
+    this->displayState = displayState;
+    update_light_state();
+}
+
+void repowerd::UBPortsLightControl::update_light_state() {
+    // show charging and full but only when display is off
+    if(displayState == DisplayOff) {
+
+        log->log(log_tag, "  state: %d", batteryInfo.state);
+        if(batteryInfo.state == 1) { // charging
+            if(batteryInfo.percentage == 100)
+                setColor(0,0xFF,0);
+            else
+                setColor(0xFF,0xFF,0xFF);
+            setState(LightControl::State::On);
+        } else
+            setState(LightControl::State::Off);
+    } else
+        setState(LightControl::State::Off);
+}

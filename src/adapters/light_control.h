@@ -25,20 +25,22 @@ class Log;
 class UBPortsLightControl : public LightControl
 {
 public:
-    UBPortsLightControl(std::shared_ptr<Log> const& log);
-    //UBPortsLightControl(
-    //    std::shared_ptr<Log> const& log,
-    //    std::string const& dbus_bus_address);
+    //UBPortsLightControl(std::shared_ptr<Log> const& log);
+    UBPortsLightControl(
+        std::shared_ptr<Log> const& log,
+        std::string const& dbus_bus_address);
 
     void setState(State newState) override;
     State state() override;
-    void setColor(int r, int g, int b) override;
+    void setColor(uint r, uint g, uint b) override;
     int onMillisec() override;
     void setOnMillisec(int onMs) override;
     int offMillisec() override;
     void setOffMillisec(int offMs) override;
 
     void start_processing() override;
+    void notify_battery_info(BatteryInfo *) override;
+    void notify_display_state(DisplayState) override;
 
 protected:
     bool init();
@@ -61,11 +63,15 @@ protected:
 
     std::shared_ptr<Log> const log;
 
-    //DBusConnectionHandle dbus_connection;
-    //DBusEventLoop dbus_event_loop;
-    //HandlerRegistration dbus_signal_handler_registration;
+    DBusConnectionHandle dbus_connection;
+    DBusEventLoop dbus_event_loop;
+    HandlerRegistration dbus_signal_handler_registration;
+
+    BatteryInfo batteryInfo;
+    DisplayState displayState;
 
     void updateLight();
+    void update_light_state();
 
 };
 
