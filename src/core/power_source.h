@@ -34,8 +34,9 @@ class BatteryInfo {
         double temperature;
 };
 
-using PowerSourceChangeHandler = std::function<void(BatteryInfo *)>;
+using PowerSourceChangeHandler = std::function<void()>;
 using PowerSourceCriticalHandler = std::function<void()>;
+using PowerSourceLevelChangeHandler = std::function<void(BatteryInfo *)>;
 
 class PowerSource
 {
@@ -50,6 +51,9 @@ public:
 
     virtual HandlerRegistration register_power_source_critical_handler(
         PowerSourceCriticalHandler const& handler) = 0;
+
+    virtual HandlerRegistration register_power_source_level_change_handler(
+        PowerSourceLevelChangeHandler const& handler) = 0;
 
 protected:
     PowerSource() = default;

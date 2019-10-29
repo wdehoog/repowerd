@@ -54,8 +54,9 @@ struct MockStateMachine : public repowerd::StateMachine
     MOCK_METHOD0(handle_power_button_press, void());
     MOCK_METHOD0(handle_power_button_release, void());
 
-    MOCK_METHOD1(handle_power_source_change, void(repowerd::BatteryInfo*));
+    MOCK_METHOD0(handle_power_source_change, void());
     MOCK_METHOD0(handle_power_source_critical, void());
+    MOCK_METHOD1(handle_power_source_level_change, void(repowerd::BatteryInfo*));
 
     MOCK_METHOD0(handle_proximity_far, void());
     MOCK_METHOD0(handle_proximity_near, void());
@@ -526,7 +527,7 @@ TEST_F(ADaemon, notifies_state_machine_of_power_source_change)
 {
     start_daemon();
 
-    //EXPECT_CALL(*config.the_mock_state_machine(), handle_power_source_change());
+    EXPECT_CALL(*config.the_mock_state_machine(), handle_power_source_change());
 
     config.the_fake_power_source()->emit_power_source_change();
 }

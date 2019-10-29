@@ -266,10 +266,8 @@ void repowerd::DefaultStateMachine::handle_power_button_release()
     power_button_long_press_alarm_id = AlarmId::invalid;
 }
 
-void repowerd::DefaultStateMachine::handle_power_source_change(repowerd::BatteryInfo * batteryInfo)
+void repowerd::DefaultStateMachine::handle_power_source_change() 
 {
-    log->log(log_tag, "handle_power_source_change");
-
     if (display_power_mode == DisplayPowerMode::on)
     {
         brighten_display();
@@ -279,6 +277,12 @@ void repowerd::DefaultStateMachine::handle_power_source_change(repowerd::Battery
     {
         turn_on_display_with_reduced_timeout(DisplayPowerChangeReason::notification);
     }
+
+}
+
+void repowerd::DefaultStateMachine::handle_power_source_level_change(repowerd::BatteryInfo * batteryInfo)
+{
+    log->log(log_tag, "handle_power_source_level_change");
 
     if(batteryInfo) 
     {

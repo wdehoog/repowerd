@@ -49,6 +49,9 @@ public:
     HandlerRegistration register_power_source_critical_handler(
         PowerSourceCriticalHandler const& handler) override;
 
+    HandlerRegistration register_power_source_level_change_handler(
+        PowerSourceLevelChangeHandler const& handler) override;
+
     std::unordered_set<std::string> tracked_batteries();
 
 private:
@@ -86,6 +89,7 @@ private:
 
     PowerSourceChangeHandler power_source_change_handler;
     PowerSourceCriticalHandler power_source_critical_handler;
+    PowerSourceLevelChangeHandler power_source_level_change_handler;
 
     std::unordered_map<std::string,BatteryInfo> batteries;
 };

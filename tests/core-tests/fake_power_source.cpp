@@ -34,7 +34,20 @@ repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_change_
         [this]
         {
             mock.unregister_power_source_change_handler();
-            this->power_source_change_handler = [](repowerd::BatteryInfo*){};
+            this->power_source_change_handler = []{};
+        }};
+}
+
+repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_level_change_handler(
+    PowerSourceLevelChangeHandler const& handler)
+{
+    mock.register_power_source_level_change_handler(handler);
+    this->power_source_level_change_handler = handler;
+    return HandlerRegistration{
+        [this]
+        {
+            mock.unregister_power_source_level_change_handler();
+            this->power_source_level_change_handler = [](repowerd::BatteryInfo*){};
         }};
 }
 
@@ -53,8 +66,7 @@ repowerd::HandlerRegistration rt::FakePowerSource::register_power_source_critica
 
 void rt::FakePowerSource::emit_power_source_change()
 {
-    BatteryInfo bi;
-    power_source_change_handler(&bi);
+    power_source_change_handler();
 }
 
 void rt::FakePowerSource::emit_power_source_critical()

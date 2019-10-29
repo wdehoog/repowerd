@@ -73,8 +73,9 @@ repowerd::UPowerPowerSource::UPowerPowerSource(
       temporary_suspend_inhibition{temporary_suspend_inhibition},
       critical_temperature{get_critical_temperature(device_config)},
       dbus_connection{dbus_bus_address},
-      power_source_change_handler{null_batteryinfo_handler},
-      power_source_critical_handler{null_handler}
+      power_source_change_handler{null_handler},
+      power_source_critical_handler{null_handler},
+      power_source_level_change_handler{null_batteryinfo_handler}
 {
 }
 
@@ -109,7 +110,7 @@ repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source
     return EventLoopHandlerRegistration{
         dbus_event_loop,
             [this, &handler] { this->power_source_change_handler = handler; },
-            [this] { this->power_source_change_handler = null_batteryinfo_handler; }};
+            [this] { this->power_source_change_handler = null_handler; }};
 }
 
 repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source_critical_handler(
@@ -119,6 +120,16 @@ repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source
         dbus_event_loop,
             [this, &handler] { this->power_source_critical_handler = handler; },
             [this] { this->power_source_critical_handler = null_handler; }};
+}
+
+repowerd::HandlerRegistration repowerd::UPowerPowerSource::register_power_source_level_change_handler(
+    PowerSourceLevelChangeHandler const& handler)
+{
+    log->log(log_tag, "register_power_source_change_handler: %p", (void*)&handler);
+    return EventLoopHandlerRegistration{
+        dbus_event_loop,
+            [this, &handler] { this->power_source_level_change_handler = handler; },
+            [this] { this->power_source_level_change_handler = null_batteryinfo_handler; }};
 }
 
 std::unordered_set<std::string> repowerd::UPowerPowerSource::tracked_batteries()
@@ -258,7 +269,8 @@ void repowerd::UPowerPowerSource::add_device_if_battery(std::string const& devic
                  battery_info.temperature);
 
         batteries[device] = battery_info;
-        power_source_change_handler(&batteries[device]);
+        power_source_change_handler();
+        power_source_level_change_handler(&batteries[device]);
     }
 }
 
@@ -338,6 +350,13 @@ void repowerd::UPowerPowerSource::change_device(
                      new_info.percentage);
             critical = true;
         }
+
+        // notify battery full / not full 
+        if ((new_info.percentage >= 100.0 && old_info.percentage <= 100.0)
+            || (new_info.percentage <= 100.0 && old_info.percentage >= 100)) 
+        {
+            change = true;
+        }
     }
 
     if (new_info.is_present && old_info.temperature != new_info.temperature)
@@ -360,7 +379,9 @@ void repowerd::UPowerPowerSource::change_device(
         power_source_critical_handler();
 
     if (change)
-        power_source_change_handler(&new_info);
+        power_source_change_handler();
+
+    power_source_level_change_handler(&batteries[device]);
 }
 
 GVariant* repowerd::UPowerPowerSource::get_device_properties(std::string const& device)

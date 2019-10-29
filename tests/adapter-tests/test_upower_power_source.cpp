@@ -51,9 +51,9 @@ struct AUPowerPowerSource : testing::Test
     {
         registrations.push_back(
             upower_power_source.register_power_source_change_handler(
-                [this](repowerd::BatteryInfo * value)
+                [this]
                 {
-                    mock_handlers.power_source_change(value);
+                    mock_handlers.power_source_change();
                 }));
 
         registrations.push_back(
@@ -61,6 +61,13 @@ struct AUPowerPowerSource : testing::Test
                 [this]
                 {
                     mock_handlers.power_source_critical();
+                }));
+
+        registrations.push_back(
+            upower_power_source.register_power_source_level_change_handler(
+                [this](repowerd::BatteryInfo * value)
+                {
+                    mock_handlers.power_source_level_change(value);
                 }));
 
         fake_upower.add_device(device_path(0), unplugged_line_power);
@@ -85,8 +92,9 @@ struct AUPowerPowerSource : testing::Test
 
     struct MockHandlers
     {
-        MOCK_METHOD1(power_source_change, void(repowerd::BatteryInfo*));
+        MOCK_METHOD0(power_source_change, void());
         MOCK_METHOD0(power_source_critical, void());
+        MOCK_METHOD1(power_source_level_change, void(repowerd::BatteryInfo*));
     };
     testing::NiceMock<MockHandlers> mock_handlers;
 
