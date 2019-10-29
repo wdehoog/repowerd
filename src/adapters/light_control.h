@@ -25,7 +25,8 @@ class Log;
 class UBPortsLightControl : public LightControl
 {
 public:
-    //UBPortsLightControl(std::shared_ptr<Log> const& log);
+    enum LightIndicationState {BatteryCharging, BatteryFull, MessagePending, LIS_NUM_ITEMS};
+ 
     UBPortsLightControl(
         std::shared_ptr<Log> const& log,
         std::string const& dbus_bus_address);
@@ -71,8 +72,10 @@ protected:
     DisplayState displayState;
 
     void updateLight();
+    void updateLight(light_state_t * lightState);
     void update_light_state();
 
+    light_state_t indicatorLightStates[LIS_NUM_ITEMS];
 };
 
 }

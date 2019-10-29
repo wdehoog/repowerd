@@ -21,6 +21,27 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     dbus_connection{dbus_bus_address},
     displayState(DisplayState::DisplayUnknown) {
     log->log(log_tag, "contructor");
+
+    memset(indicatorLightStates, 0, sizeof(light_state_t)*LIS_NUM_ITEMS);
+
+    // ToDo: load from DeviceConfig
+    indicatorLightStates[BatteryCharging].color = 0xFFFFFF; // white
+    indicatorLightStates[BatteryCharging].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[BatteryCharging].flashOnMS = 2000;
+    indicatorLightStates[BatteryCharging].flashOffMS = 1000;
+    indicatorLightStates[BatteryCharging].brightnessMode = BRIGHTNESS_MODE_USER;
+
+    indicatorLightStates[BatteryFull].color = 0x00FF00; // lime green
+    indicatorLightStates[BatteryFull].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[BatteryFull].flashOnMS = 1000;
+    indicatorLightStates[BatteryFull].flashOffMS = 0;
+    indicatorLightStates[BatteryFull].brightnessMode = BRIGHTNESS_MODE_USER;
+
+    indicatorLightStates[MessagePending].color = 0x006400; // dark green
+    indicatorLightStates[MessagePending].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[MessagePending].flashOnMS = 1000;
+    indicatorLightStates[MessagePending].flashOffMS = 0;
+    indicatorLightStates[MessagePending].brightnessMode = BRIGHTNESS_MODE_USER;
 }
 
 void repowerd::UBPortsLightControl::start_processing()
@@ -68,7 +89,7 @@ void repowerd::UBPortsLightControl::handle_dbus_signal(
 
 void repowerd::UBPortsLightControl::setState(State newState) {
     if (!init()) {
-	log->log(log_tag, "No lights device");
+        log->log(log_tag, "setState: No lights device");
         return;
     }
 
@@ -78,9 +99,7 @@ void repowerd::UBPortsLightControl::setState(State newState) {
         } else {
             turnOff();
         }
-
         m_state = newState;
-        //Q_EMIT stateChanged(m_state);
     }
 }
 
@@ -96,9 +115,21 @@ void repowerd::UBPortsLightControl::updateLight() {
     state.flashOnMS = m_onMs;
     state.flashOffMS = m_offMs;
     state.brightnessMode = BRIGHTNESS_MODE_USER;
-    if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-	log->log(log_tag, "Failed to update the light");
+    updateLight(&state);
+}
+
+void repowerd::UBPortsLightControl::updateLight(light_state_t * lightState) {
+    log->log(log_tag, "updateLight");
+    if (!init()) {
+        log->log(log_tag, "  No lights device");
+        return;
     }
+    if (m_lightDevice->set_light(m_lightDevice, lightState) != 0) {
+	    log->log(log_tag, "Failed to update the light");
+    } else
+      m_state = lightState->flashMode != LIGHT_FLASH_NONE 
+          ? UBPortsLightControl::On 
+          : UBPortsLightControl::Off;
 }
 
 void repowerd::UBPortsLightControl::setColor(uint r, uint g, uint b) {
@@ -107,8 +138,7 @@ void repowerd::UBPortsLightControl::setColor(uint r, uint g, uint b) {
     if (m_color != color) {
         m_color = color;
         if (m_state == UBPortsLightControl::On)
-	    updateLight();
-        //Q_EMIT colorChanged(m_color);
+            updateLight();
     }
 }
 
@@ -120,8 +150,7 @@ void repowerd::UBPortsLightControl::setOnMillisec(int onMs) {
     if (m_onMs != onMs) {
         m_onMs = onMs;
         if (m_state == UBPortsLightControl::On)
-	    updateLight();
-        //Q_EMIT onMillisecChanged(m_onMs);
+            updateLight();
     }
 }
 
@@ -133,8 +162,7 @@ void repowerd::UBPortsLightControl::setOffMillisec(int offMs) {
     if (m_offMs != offMs) {
         m_offMs = offMs;
         if (m_state == UBPortsLightControl::On)
-	    updateLight();
-        //Q_EMIT offMillisecChanged(m_offMs);
+            updateLight();
     }
 }
 
@@ -155,16 +183,20 @@ bool repowerd::UBPortsLightControl::init() {
             turnOff();
             return true;
         } else {
-	    log->log(log_tag, "Failed to access notification lights");
+            log->log(log_tag, "Failed to access notification lights");
         }
     } else {
-	log->log(log_tag, "Failed to initialize lights hardware.");
+        log->log(log_tag, "Failed to initialize lights hardware.");
     }
     return false;
 }
 
 void repowerd::UBPortsLightControl::turnOff() {
     log->log(log_tag, "turnOff");
+    if (!init()) {
+        log->log(log_tag, "  No lights device");
+        return;
+    }
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
     state.color = 0x00000000;
@@ -174,12 +206,16 @@ void repowerd::UBPortsLightControl::turnOff() {
     state.brightnessMode = 0;
 
     if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-	log->log(log_tag, "Failed to turn the light off");
+        log->log(log_tag, "Failed to turn the light off");
     }
 }
 
 void repowerd::UBPortsLightControl::turnOn() {
     log->log(log_tag, "turnOn");
+    if (!init()) {
+        log->log(log_tag, "  No lights device");
+        return;
+    }
     // pulse
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
@@ -216,10 +252,9 @@ void repowerd::UBPortsLightControl::update_light_state() {
     if(displayState == DisplayOff) {
         if(batteryInfo.state == 1) { // charging
             if(batteryInfo.percentage == 100)
-                setColor(0,0xFF,0);
+                updateLight(&indicatorLightStates[BatteryFull]);
             else
-                setColor(0xFF,0xFF,0xFF);
-            setState(LightControl::State::On);
+                updateLight(&indicatorLightStates[BatteryCharging]);
         } else
             setState(LightControl::State::Off);
     } else
