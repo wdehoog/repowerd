@@ -7,10 +7,26 @@
 namespace
 {
 char const* const log_tag = "UBPortsLightControl";
-char const* const dbus_im_name = "com.canonical.indicator.messages";
-char const* const dbus_im_path = "/com/canonical/indicator/messages";
-char const* const dbus_im_interface = "";
+char const* const dbus_lightcontrol_name = "com.ubports.lightcontrol";
+char const* const dbus_lightcontrol_path = "/com/ubports/lightcontrol";
+char const* const dbus_lightcontrol_interface = "com.ubports.lightcontrol";
 }
+char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN' 'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
+<node>
+  <interface name='com.ubports.lightcontrol.'>
+    <!-- 
+        notifyLightEvent:
+        @event the LightEvent to notify: UnreadNotifications, BluetoothEnabled, BatteryLow, BatteryCharging, BatteryFull 
+        @active 1 for active, 0 for inactive
+
+        Notify a LightEvent. 
+    -->
+    <method name='notifyLightEvent'>
+      <arg name='event' type='s' direction='in'/>
+      <arg name='active' type='i' direction='in'/>
+    </method>
+  </interface>
+</node>)";
 
 repowerd::UBPortsLightControl::UBPortsLightControl(
    std::shared_ptr<Log> const& log,
@@ -22,7 +38,8 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     displayState(DisplayState::DisplayUnknown) {
     log->log(log_tag, "contructor");
 
-    memset(indicatorLightStates, 0, sizeof(light_state_t)*LIS_NUM_ITEMS);
+    memset(indicatorLightStates, 0, sizeof(indicatorLightStates));
+    memset(lightEventsActive, 0, sizeof(lightEventsActive));
 
     // ToDo: load from DeviceConfig
     indicatorLightStates[BatteryCharging].color = 0xFFFFFF; // white
@@ -50,7 +67,25 @@ void repowerd::UBPortsLightControl::start_processing()
 
     // call init() here?
 
-    dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
+    lightcontrol_handler_registration = dbus_event_loop.register_object_handler(
+        dbus_connection,
+        dbus_lightcontrol_path,
+        lightcontrol_service_introspection,
+        [this] (
+            GDBusConnection* connection,
+            gchar const* sender,
+            gchar const* object_path,
+            gchar const* interface_name,
+            gchar const* method_name,
+            GVariant* parameters,
+            GDBusMethodInvocation* invocation)
+        {
+            dbus_method_call(
+                connection, sender, object_path, interface_name,
+                method_name, parameters, invocation);
+        });
+
+    /*dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
         dbus_connection,
         dbus_im_name,
         dbus_im_interface,
@@ -67,7 +102,55 @@ void repowerd::UBPortsLightControl::start_processing()
             handle_dbus_signal(
                 connection, sender, object_path, interface_name,
                 signal_name, parameters);
-        });
+        });*/
+}
+
+void repowerd::UBPortsLightControl::dbus_method_call(
+    GDBusConnection* /*connection*/,
+    gchar const* sender_cstr,
+    gchar const* /*object_path_cstr*/,
+    gchar const* /*interface_name_cstr*/,
+    gchar const* method_name_cstr,
+    GVariant* parameters,
+    GDBusMethodInvocation* invocation)
+{
+    std::string const sender{sender_cstr ? sender_cstr : ""};
+    std::string const method_name{method_name_cstr ? method_name_cstr : ""};
+
+    if (method_name == "notifyLightEvent")
+    {
+        char const* event{""};
+        int32_t active{-1};
+        g_variant_get(parameters, "(&si)", &event, &active);
+        if(strcmp(event, "UnreadNotifications")!=0)
+            lightEventsActive[LE_UnreadNotifications] = active>0;
+        else if(strcmp(event, "BluetoothEnabled")!=0)
+            lightEventsActive[LE_BluetoothEnabled] = active>0;
+        else if(strcmp(event, "BatteryLow")!=0)
+            lightEventsActive[LE_BatteryLow] = active>0;
+        else if(strcmp(event, "BatteryCharging")!=0)
+            lightEventsActive[LE_BatteryCharging] = active>0;
+        else if(strcmp(event, "BatteryFull")!=0)
+            lightEventsActive[LE_BatteryFull] = active>0;
+
+        update_light_state();
+
+        g_dbus_method_invocation_return_value(invocation, NULL);
+    }
+    else
+    {
+        dbus_unknown_method(sender, method_name);
+
+        g_dbus_method_invocation_return_error_literal(
+            invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED, "");
+    }
+
+}
+
+void repowerd::UBPortsLightControl::dbus_unknown_method(
+    std::string const& sender, std::string const& name)
+{
+    log->log(log_tag, "dbus_unknown_method(%s,%s)", sender.c_str(), name.c_str());
 }
 
 void repowerd::UBPortsLightControl::handle_dbus_signal(
@@ -236,6 +319,9 @@ void repowerd::UBPortsLightControl::notify_battery_info(BatteryInfo * batteryInf
     this->batteryInfo.state = batteryInfo->state;
     this->batteryInfo.percentage = batteryInfo->percentage;
     this->batteryInfo.temperature = batteryInfo->temperature;
+    lightEventsActive[LE_BatteryCharging] = batteryInfo->state == 1; // charging
+    lightEventsActive[LE_BatteryLow] = batteryInfo->percentage < 10;
+    lightEventsActive[LE_BatteryFull] = batteryInfo->percentage >= 100;
     update_light_state();
 }
 
@@ -250,12 +336,14 @@ void repowerd::UBPortsLightControl::update_light_state() {
 
     // show charging and full but only when display is off
     if(displayState == DisplayOff) {
-        if(batteryInfo.state == 1) { // charging
-            if(batteryInfo.percentage == 100)
-                updateLight(&indicatorLightStates[BatteryFull]);
-            else
-                updateLight(&indicatorLightStates[BatteryCharging]);
-        } else
+        //if(lightEventsActive[LE_BatteryLow])
+        //    updateLight(&indicatorLightStates[BatteryFull]);
+        //else
+        if(lightEventsActive[LE_BatteryFull])
+            updateLight(&indicatorLightStates[BatteryFull]);
+        else if(lightEventsActive[LE_BatteryCharging])
+            updateLight(&indicatorLightStates[BatteryCharging]);
+        else
             setState(LightControl::State::Off);
     } else
         setState(LightControl::State::Off);

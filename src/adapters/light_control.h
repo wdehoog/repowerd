@@ -26,7 +26,8 @@ class UBPortsLightControl : public LightControl
 {
 public:
     enum LightIndicationState {BatteryCharging, BatteryFull, MessagePending, LIS_NUM_ITEMS};
- 
+    enum LightEvent {LE_UnreadNotifications, LE_BluetoothEnabled, LE_BatteryLow, LE_BatteryCharging, LE_BatteryFull, LE_NUM_ITEMS};
+
     UBPortsLightControl(
         std::shared_ptr<Log> const& log,
         std::string const& dbus_bus_address);
@@ -54,13 +55,21 @@ protected:
     int m_offMs;
     uint m_color;
     void handle_dbus_signal(
-
-    GDBusConnection* connection,
-    gchar const* sender,
-    gchar const* object_path,
-    gchar const* interface_name,
-    gchar const* signal_name,
-    GVariant* parameters);
+            GDBusConnection* connection,
+            gchar const* sender,
+            gchar const* object_path,
+            gchar const* interface_name,
+            gchar const* signal_name,
+            GVariant* parameters);
+    void dbus_method_call(
+        GDBusConnection* connection,
+        gchar const* sender,
+        gchar const* object_path,
+        gchar const* interface_name,
+        gchar const* method_name,
+        GVariant* parameters,
+        GDBusMethodInvocation* invocation);
+    void dbus_unknown_method(std::string const& sender, std::string const& name);
 
     std::shared_ptr<Log> const log;
 
@@ -76,6 +85,13 @@ protected:
     void update_light_state();
 
     light_state_t indicatorLightStates[LIS_NUM_ITEMS];
+    bool lightEventsActive[LE_NUM_ITEMS];
+
+    // These need to be at the end, so that handlers are unregistered first on
+    // destruction, to avoid accessing other members if an event arrives
+    // on destruction.
+    HandlerRegistration lightcontrol_handler_registration;
+
 };
 
 }

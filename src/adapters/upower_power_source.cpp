@@ -350,13 +350,6 @@ void repowerd::UPowerPowerSource::change_device(
                      new_info.percentage);
             critical = true;
         }
-
-        // notify battery full / not full 
-        if ((new_info.percentage >= 100.0 && old_info.percentage <= 100.0)
-            || (new_info.percentage <= 100.0 && old_info.percentage >= 100)) 
-        {
-            change = true;
-        }
     }
 
     if (new_info.is_present && old_info.temperature != new_info.temperature)
