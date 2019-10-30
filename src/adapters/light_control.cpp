@@ -1,4 +1,5 @@
 #include <cstring>
+#include <sstream>
 
 #include "light_control.h"
 
@@ -16,7 +17,7 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
   <interface name='com.ubports.lightcontrol'>
     <!-- 
         notifyLightEvent:
-        @event the LightEvent to notify: UnreadNotifications, BluetoothEnabled, BatteryLow, BatteryCharging, BatteryFull 
+        @event the LightEvent to notify: UnreadNotifications, BluetoothEnabled, BatteryLow, BatteryCharging, BatteryFull, Playing 
         @active 1 for active, 0 for inactive
 
         Notify a LightEvent. 
@@ -42,6 +43,19 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
     -->
     <method name='disableLightEvent'>
       <arg name='event' type='s' direction='in'/>
+    </method>
+    <!-- 
+        setPlayingData:
+        @color the rgb hex string of the color to use. Example: 0xFF1234
+        @onMS time (ms) the led must be on while pulsing
+        @offMS time (ms) the led must be off while pulsing
+
+        Play with the led. Enable the event (Playing) and set the color and pulse rates.
+    -->
+    <method name='setPlayingData'>
+      <arg name='color' type='s' direction='in'/>
+      <arg name='onMS' type='i' direction='in'/>
+      <arg name='offMS' type='i' direction='in'/>
     </method>
   </interface>
 </node>)";
@@ -90,6 +104,12 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     indicatorLightStates[BluetoothEnabled].flashOnMS = 1000;
     indicatorLightStates[BluetoothEnabled].flashOffMS = 0;
     indicatorLightStates[BluetoothEnabled].brightnessMode = BRIGHTNESS_MODE_USER;
+
+    indicatorLightStates[Playing].color = 0x0000FF; // blue
+    indicatorLightStates[Playing].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[Playing].flashOnMS = 1000;
+    indicatorLightStates[Playing].flashOffMS = 500;
+    indicatorLightStates[Playing].brightnessMode = BRIGHTNESS_MODE_USER;
 }
 
 void repowerd::UBPortsLightControl::start_processing()
@@ -173,6 +193,8 @@ static repowerd::UBPortsLightControl::LightEvent getLightEventFromString(char co
         return repowerd::UBPortsLightControl::LE_BatteryCharging;
     else if(!strcmp(str, "BatteryFull"))
         return repowerd::UBPortsLightControl::LE_BatteryFull;
+    else if(!strcmp(str, "Playing"))
+        return repowerd::UBPortsLightControl::LE_Playing;
     else
         return repowerd::UBPortsLightControl::LE_NUM_ITEMS;
 }
@@ -219,6 +241,22 @@ void repowerd::UBPortsLightControl::dbus_method_call(
         LightEvent lev = getLightEventFromString(event);
         if(lev < LE_NUM_ITEMS)
             lightEventsEnabled[lev] = 0;
+        requestOk = true;
+    }
+    else if (method_name == "setPlayingData")
+    {
+        char const* color{""};
+        int32_t onMS{-1};
+        int32_t offMS{-1};
+        g_variant_get(parameters, "(&sii)", &color, &onMS, &offMS);
+        log->log(log_tag, "dbus_method_call(%s, %s, %d, %d)", method_name_cstr, color, onMS, offMS);
+
+        std::stringstream sStream;
+        sStream << std::hex << color;
+        sStream >> indicatorLightStates[LE_Playing].color;
+        indicatorLightStates[LE_Playing].flashOnMS = onMS;
+        indicatorLightStates[LE_Playing].flashOffMS = offMS;
+
         requestOk = true;
     }
 
@@ -305,7 +343,7 @@ void repowerd::UBPortsLightControl::updateLight() {
 }
 
 void repowerd::UBPortsLightControl::updateLight(light_state_t * lightState) {
-    log->log(log_tag, "updateLight");
+    //log->log(log_tag, "updateLight");
     if (!init()) {
         log->log(log_tag, "  No lights device");
         return;
@@ -449,6 +487,8 @@ void repowerd::UBPortsLightControl::update_light_state() {
             updateLight(&indicatorLightStates[BatteryFull]);
         else if(lightEventsEnabled[LE_BatteryCharging] && lightEventsActive[LE_BatteryCharging])
             updateLight(&indicatorLightStates[BatteryCharging]);
+        else if(lightEventsEnabled[LE_Playing] && lightEventsActive[LE_Playing])
+            updateLight(&indicatorLightStates[Playing]);
         else
             setState(LightControl::State::Off);
     } else

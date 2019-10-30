@@ -26,10 +26,10 @@ class UBPortsLightControl : public LightControl
 {
 public:
     // for light styles
-    enum LightIndicationState {BatteryCharging, BatteryFull, BatteryLow, UnreadNotifications, BluetoothEnabled, LIS_NUM_ITEMS};
+    enum LightIndicationState {BatteryCharging, BatteryFull, BatteryLow, UnreadNotifications, BluetoothEnabled, Playing, LIS_NUM_ITEMS};
 
     // for notifying LightControl
-    enum LightEvent {LE_UnreadNotifications, LE_BluetoothEnabled, LE_BatteryLow, LE_BatteryCharging, LE_BatteryFull, LE_NUM_ITEMS};
+    enum LightEvent {LE_UnreadNotifications, LE_BluetoothEnabled, LE_BatteryLow, LE_BatteryCharging, LE_BatteryFull, LE_Playing, LE_NUM_ITEMS};
 
     UBPortsLightControl(
         std::shared_ptr<Log> const& log,
