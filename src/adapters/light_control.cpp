@@ -25,6 +25,24 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
       <arg name='event' type='s' direction='in'/>
       <arg name='active' type='i' direction='in'/>
     </method>
+    <!-- 
+        enableLightEvent:
+        @event the LightEvent to notify: see above
+
+        Enable a LightEvent. When enabled the event state (active/inactive) will be used to determine the state of the led. 
+    -->
+    <method name='enableLightEvent'>
+      <arg name='event' type='s' direction='in'/>
+    </method>
+    <!-- 
+        disableLightEvent:
+        @event the LightEvent to notify: see above
+
+        Disable a LightEvent. When disabled the event state (active/inactive) will be ignored.
+    -->
+    <method name='disableLightEvent'>
+      <arg name='event' type='s' direction='in'/>
+    </method>
   </interface>
 </node>)";
 
@@ -40,6 +58,7 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
 
     memset(indicatorLightStates, 0, sizeof(indicatorLightStates));
     memset(lightEventsActive, 0, sizeof(lightEventsActive));
+    memset(lightEventsEnabled, 0, sizeof(lightEventsEnabled));
 
     // ToDo: load from DeviceConfig
     indicatorLightStates[BatteryCharging].color = 0xFFFFFF; // white
@@ -105,6 +124,21 @@ void repowerd::UBPortsLightControl::start_processing()
         });*/
 }
 
+static repowerd::UBPortsLightControl::LightEvent getLightEventFromString(char const * str) {
+    if(strcmp(str, "UnreadNotifications")!=0)
+        return repowerd::UBPortsLightControl::LE_UnreadNotifications;
+    else if(strcmp(str, "BluetoothEnabled")!=0)
+        return repowerd::UBPortsLightControl::LE_BluetoothEnabled;
+    else if(strcmp(str, "BatteryLow")!=0)
+        return repowerd::UBPortsLightControl::LE_BatteryLow;
+    else if(strcmp(str, "BatteryCharging")!=0)
+        return repowerd::UBPortsLightControl::LE_BatteryCharging;
+    else if(strcmp(str, "BatteryFull")!=0)
+        return repowerd::UBPortsLightControl::LE_BatteryFull;
+    else
+        return repowerd::UBPortsLightControl::LE_NUM_ITEMS;
+}
+
 void repowerd::UBPortsLightControl::dbus_method_call(
     GDBusConnection* /*connection*/,
     gchar const* sender_cstr,
@@ -114,6 +148,7 @@ void repowerd::UBPortsLightControl::dbus_method_call(
     GVariant* parameters,
     GDBusMethodInvocation* invocation)
 {
+    bool requestOk = false;
     std::string const sender{sender_cstr ? sender_cstr : ""};
     std::string const method_name{method_name_cstr ? method_name_cstr : ""};
 
@@ -122,17 +157,35 @@ void repowerd::UBPortsLightControl::dbus_method_call(
         char const* event{""};
         int32_t active{-1};
         g_variant_get(parameters, "(&si)", &event, &active);
-        if(strcmp(event, "UnreadNotifications")!=0)
-            lightEventsActive[LE_UnreadNotifications] = active>0;
-        else if(strcmp(event, "BluetoothEnabled")!=0)
-            lightEventsActive[LE_BluetoothEnabled] = active>0;
-        else if(strcmp(event, "BatteryLow")!=0)
-            lightEventsActive[LE_BatteryLow] = active>0;
-        else if(strcmp(event, "BatteryCharging")!=0)
-            lightEventsActive[LE_BatteryCharging] = active>0;
-        else if(strcmp(event, "BatteryFull")!=0)
-            lightEventsActive[LE_BatteryFull] = active>0;
+        log->log(log_tag, "dbus_method_call(%s, %s, %d)", method_name_cstr, event, active);
+        LightEvent lev = getLightEventFromString(event);
+        if(lev < LE_NUM_ITEMS)
+            lightEventsActive[lev] = active>0;
+        requestOk = true;
+    }
+    else if (method_name == "enableLightEvent")
+    {
+        char const* event{""};
+        g_variant_get(parameters, "(&s)", &event);
+        log->log(log_tag, "dbus_method_call(%s, %s)", method_name_cstr, event);
+        LightEvent lev = getLightEventFromString(event);
+        if(lev < LE_NUM_ITEMS)
+            lightEventsEnabled[lev] = 1;
+        requestOk = true;
+    }
+    else if (method_name == "disableLightEvent")
+    {
+        char const* event{""};
+        g_variant_get(parameters, "(&s)", &event);
+        log->log(log_tag, "dbus_method_call(%s, %s)", method_name_cstr, event);
+        LightEvent lev = getLightEventFromString(event);
+        if(lev < LE_NUM_ITEMS)
+            lightEventsEnabled[lev] = 0;
+        requestOk = true;
+    }
 
+    if(requestOk)
+    {
         update_light_state();
 
         g_dbus_method_invocation_return_value(invocation, NULL);
@@ -144,7 +197,7 @@ void repowerd::UBPortsLightControl::dbus_method_call(
         g_dbus_method_invocation_return_error_literal(
             invocation, G_DBUS_ERROR, G_DBUS_ERROR_NOT_SUPPORTED, "");
     }
-
+    
 }
 
 void repowerd::UBPortsLightControl::dbus_unknown_method(

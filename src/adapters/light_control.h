@@ -85,7 +85,8 @@ protected:
     void update_light_state();
 
     light_state_t indicatorLightStates[LIS_NUM_ITEMS];
-    bool lightEventsActive[LE_NUM_ITEMS];
+    bool lightEventsActive[LE_NUM_ITEMS];  // 1 for active, 0 for inactive
+    bool lightEventsEnabled[LE_NUM_ITEMS]; // 1 for enabled (used), 0 for disabled (ignored)
 
     // These need to be at the end, so that handlers are unregistered first on
     // destruction, to avoid accessing other members if an event arrives
