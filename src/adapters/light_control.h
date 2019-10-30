@@ -25,7 +25,10 @@ class Log;
 class UBPortsLightControl : public LightControl
 {
 public:
-    enum LightIndicationState {BatteryCharging, BatteryFull, MessagePending, LIS_NUM_ITEMS};
+    // for light styles
+    enum LightIndicationState {BatteryCharging, BatteryFull, BatteryLow, UnreadNotifications, BluetoothEnabled, LIS_NUM_ITEMS};
+
+    // for notifying LightControl
     enum LightEvent {LE_UnreadNotifications, LE_BluetoothEnabled, LE_BatteryLow, LE_BatteryCharging, LE_BatteryFull, LE_NUM_ITEMS};
 
     UBPortsLightControl(

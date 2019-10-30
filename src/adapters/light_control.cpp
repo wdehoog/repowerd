@@ -57,10 +57,10 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     log->log(log_tag, "contructor");
 
     memset(indicatorLightStates, 0, sizeof(indicatorLightStates));
-    memset(lightEventsActive, 0, sizeof(lightEventsActive));
-    memset(lightEventsEnabled, 0, sizeof(lightEventsEnabled));
+    memset(lightEventsActive, 0, sizeof(lightEventsActive)); // inactive
+    memset(lightEventsEnabled, 1, sizeof(lightEventsEnabled)); // enabled
 
-    // ToDo: load from DeviceConfig
+    // ToDo: load from DeviceConfig of System xxx
     indicatorLightStates[BatteryCharging].color = 0xFFFFFF; // white
     indicatorLightStates[BatteryCharging].flashMode = LIGHT_FLASH_TIMED;
     indicatorLightStates[BatteryCharging].flashOnMS = 2000;
@@ -73,11 +73,23 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     indicatorLightStates[BatteryFull].flashOffMS = 0;
     indicatorLightStates[BatteryFull].brightnessMode = BRIGHTNESS_MODE_USER;
 
-    indicatorLightStates[MessagePending].color = 0x006400; // dark green
-    indicatorLightStates[MessagePending].flashMode = LIGHT_FLASH_TIMED;
-    indicatorLightStates[MessagePending].flashOnMS = 1000;
-    indicatorLightStates[MessagePending].flashOffMS = 0;
-    indicatorLightStates[MessagePending].brightnessMode = BRIGHTNESS_MODE_USER;
+    indicatorLightStates[BatteryLow].color = 0xFF5733; // sort of orange
+    indicatorLightStates[BatteryLow].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[BatteryLow].flashOnMS = 1000;
+    indicatorLightStates[BatteryLow].flashOffMS = 0;
+    indicatorLightStates[BatteryLow].brightnessMode = BRIGHTNESS_MODE_USER;
+
+    indicatorLightStates[UnreadNotifications].color = 0x006400; // dark green
+    indicatorLightStates[UnreadNotifications].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[UnreadNotifications].flashOnMS = 1000;
+    indicatorLightStates[UnreadNotifications].flashOffMS = 0;
+    indicatorLightStates[UnreadNotifications].brightnessMode = BRIGHTNESS_MODE_USER;
+
+    indicatorLightStates[BluetoothEnabled].color = 0x0000FF; // blue
+    indicatorLightStates[BluetoothEnabled].flashMode = LIGHT_FLASH_TIMED;
+    indicatorLightStates[BluetoothEnabled].flashOnMS = 1000;
+    indicatorLightStates[BluetoothEnabled].flashOffMS = 0;
+    indicatorLightStates[BluetoothEnabled].brightnessMode = BRIGHTNESS_MODE_USER;
 }
 
 void repowerd::UBPortsLightControl::start_processing()
@@ -389,12 +401,15 @@ void repowerd::UBPortsLightControl::update_light_state() {
 
     // show charging and full but only when display is off
     if(displayState == DisplayOff) {
-        //if(lightEventsActive[LE_BatteryLow])
-        //    updateLight(&indicatorLightStates[BatteryFull]);
-        //else
-        if(lightEventsActive[LE_BatteryFull])
+        if(lightEventsEnabled[LE_BatteryLow] && lightEventsActive[LE_BatteryLow])
+            updateLight(&indicatorLightStates[BatteryLow]);
+        else if(lightEventsEnabled[LE_UnreadNotifications] && lightEventsActive[LE_UnreadNotifications])
+            updateLight(&indicatorLightStates[UnreadNotifications]);
+        else if(lightEventsEnabled[LE_BluetoothEnabled] && lightEventsActive[LE_BluetoothEnabled])
+            updateLight(&indicatorLightStates[BluetoothEnabled]);
+        else if(lightEventsEnabled[LE_BatteryFull] && lightEventsActive[LE_BatteryFull])
             updateLight(&indicatorLightStates[BatteryFull]);
-        else if(lightEventsActive[LE_BatteryCharging])
+        else if(lightEventsEnabled[LE_BatteryCharging] && lightEventsActive[LE_BatteryCharging])
             updateLight(&indicatorLightStates[BatteryCharging]);
         else
             setState(LightControl::State::Off);
