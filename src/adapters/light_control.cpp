@@ -7,13 +7,13 @@
 namespace
 {
 char const* const log_tag = "UBPortsLightControl";
-char const* const dbus_lightcontrol_name = "com.ubports.lightcontrol";
+char const* const dbus_lightcontrol_servicename = "com.ubports.lightcontrol";
 char const* const dbus_lightcontrol_path = "/com/ubports/lightcontrol";
 char const* const dbus_lightcontrol_interface = "com.ubports.lightcontrol";
 }
 char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC '-//freedesktop//DTD D-BUS Object Introspection 1.0//EN' 'http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd'>
 <node>
-  <interface name='com.ubports.lightcontrol.'>
+  <interface name='com.ubports.lightcontrol'>
     <!-- 
         notifyLightEvent:
         @event the LightEvent to notify: UnreadNotifications, BluetoothEnabled, BatteryLow, BatteryCharging, BatteryFull 
@@ -73,7 +73,7 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     indicatorLightStates[BatteryFull].flashOffMS = 0;
     indicatorLightStates[BatteryFull].brightnessMode = BRIGHTNESS_MODE_USER;
 
-    indicatorLightStates[BatteryLow].color = 0xFF5733; // sort of orange
+    indicatorLightStates[BatteryLow].color = 0xFF0000; // red
     indicatorLightStates[BatteryLow].flashMode = LIGHT_FLASH_TIMED;
     indicatorLightStates[BatteryLow].flashOnMS = 1000;
     indicatorLightStates[BatteryLow].flashOffMS = 0;
@@ -116,6 +116,25 @@ void repowerd::UBPortsLightControl::start_processing()
                 method_name, parameters, invocation);
         });
 
+    name_owner_changed_handler_registration = dbus_event_loop.register_signal_handler(
+        dbus_connection,
+        "org.freedesktop.DBus",
+        "org.freedesktop.DBus",
+        "NameOwnerChanged",
+        "/org/freedesktop/DBus",
+        [this] (
+            GDBusConnection* connection,
+            gchar const* sender,
+            gchar const* object_path,
+            gchar const* interface_name,
+            gchar const* signal_name,
+            GVariant* parameters)
+        {
+            handle_dbus_signal(
+                connection, sender, object_path, interface_name,
+                signal_name, parameters);
+        });
+
     /*dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
         dbus_connection,
         dbus_im_name,
@@ -134,18 +153,25 @@ void repowerd::UBPortsLightControl::start_processing()
                 connection, sender, object_path, interface_name,
                 signal_name, parameters);
         });*/
+
+    try {
+        dbus_connection.request_name(dbus_lightcontrol_servicename);
+    } catch (...) {
+        log->log(log_tag, "Exception while requesting dbus name: %s", dbus_lightcontrol_servicename);
+    }
+
 }
 
 static repowerd::UBPortsLightControl::LightEvent getLightEventFromString(char const * str) {
-    if(strcmp(str, "UnreadNotifications")!=0)
+    if(!strcmp(str, "UnreadNotifications"))
         return repowerd::UBPortsLightControl::LE_UnreadNotifications;
-    else if(strcmp(str, "BluetoothEnabled")!=0)
+    else if(!strcmp(str, "BluetoothEnabled"))
         return repowerd::UBPortsLightControl::LE_BluetoothEnabled;
-    else if(strcmp(str, "BatteryLow")!=0)
+    else if(!strcmp(str, "BatteryLow"))
         return repowerd::UBPortsLightControl::LE_BatteryLow;
-    else if(strcmp(str, "BatteryCharging")!=0)
+    else if(!strcmp(str, "BatteryCharging"))
         return repowerd::UBPortsLightControl::LE_BatteryCharging;
-    else if(strcmp(str, "BatteryFull")!=0)
+    else if(!strcmp(str, "BatteryFull"))
         return repowerd::UBPortsLightControl::LE_BatteryFull;
     else
         return repowerd::UBPortsLightControl::LE_NUM_ITEMS;
@@ -220,18 +246,30 @@ void repowerd::UBPortsLightControl::dbus_unknown_method(
 
 void repowerd::UBPortsLightControl::handle_dbus_signal(
     GDBusConnection*, // connection
-    gchar const* ,    // sender
-    gchar const* ,    // object_path
-    gchar const* ,    // interface_name
+    gchar const* sender_cstr,
+    gchar const* object_path_cstr,
+    gchar const* interface_name_cstr,
     gchar const* signal_name_cstr,
-    GVariant* )       // parameters
+    GVariant* parameters)
 {
+    std::string const sender{sender_cstr ? sender_cstr : ""};
+    std::string const object_path{object_path_cstr ? object_path_cstr : ""};
+    std::string const interface_name{interface_name_cstr ? interface_name_cstr : ""};
     std::string const signal_name{signal_name_cstr ? signal_name_cstr : ""};
 
-    //if (signal_name == "PropertiesChanged") {
-    //    log->log(log_tag, "dbus signal PropertiesChanged");
-	// 
-    //}
+    if (sender == "org.freedesktop.DBus" &&
+        object_path == "/org/freedesktop/DBus" &&
+        interface_name == "org.freedesktop.DBus" &&
+        signal_name == "NameOwnerChanged")
+    {
+        char const* name = "";
+        char const* old_owner = "";
+        char const* new_owner = "";
+        g_variant_get(parameters, "(&s&s&s)", &name, &old_owner, &new_owner);
+
+        log->log(log_tag, "dbus owner changed(%s,%s,%s)",
+                 name, old_owner, new_owner);
+    }
         
 }
 

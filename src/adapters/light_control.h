@@ -79,6 +79,8 @@ protected:
     DBusConnectionHandle dbus_connection;
     DBusEventLoop dbus_event_loop;
     HandlerRegistration dbus_signal_handler_registration;
+    HandlerRegistration name_owner_changed_handler_registration;
+
 
     BatteryInfo batteryInfo;
     DisplayState displayState;
