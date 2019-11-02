@@ -23,6 +23,7 @@
 #include "display_power_control.h"
 #include "display_power_event_sink.h"
 #include "infinite_timeout.h"
+#include "light_control.h"
 #include "log.h"
 #include "modem_power_control.h"
 #include "performance_booster.h"
@@ -72,6 +73,7 @@ repowerd::DefaultStateMachine::DefaultStateMachine(
       brightness_control{config.the_brightness_control()},
       display_power_control{config.the_display_power_control()},
       display_power_event_sink{config.the_display_power_event_sink()},
+      light_control{config.the_light_control()},
       log{config.the_log()},
       modem_power_control{config.the_modem_power_control()},
       performance_booster{config.the_performance_booster()},

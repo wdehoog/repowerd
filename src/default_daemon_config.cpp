@@ -29,6 +29,7 @@
 #include "adapters/dev_alarm_wakeup_service.h"
 #include "adapters/event_loop_timer.h"
 #include "adapters/libsuspend_system_power_control.h"
+#include "adapters/light_control.h"
 #include "adapters/logind_session_tracker.h"
 #include "adapters/logind_system_power_control.h"
 #include "adapters/null_log.h"
@@ -488,6 +489,24 @@ repowerd::DefaultDaemonConfig::the_filesystem()
         filesystem = std::make_shared<RealFilesystem>();
 
     return filesystem;
+}
+
+std::shared_ptr<repowerd::LightControl>
+repowerd::DefaultDaemonConfig::the_light_control()
+{
+    if (!light_control)
+    try
+    {
+        light_control = std::make_shared<UBPortsLightControl>(
+            the_log(), the_dbus_bus_address());
+    }
+    catch (std::exception const& e)
+    {
+        the_log()->log(log_tag, "Failed to create UBPortsLightControl: %s", e.what());
+        // ToDo light_control = std::make_shared<NullLightControl>();
+    }
+
+    return light_control;
 }
 
 std::shared_ptr<repowerd::LightSensor>

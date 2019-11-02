@@ -73,6 +73,7 @@ public:
     std::shared_ptr<DeviceConfig> the_device_config();
     std::shared_ptr<DeviceQuirks> the_device_quirks();
     std::shared_ptr<Filesystem> the_filesystem();
+    std::shared_ptr<LightControl> the_light_control();
     std::shared_ptr<LightSensor> the_light_sensor();
     std::shared_ptr<OfonoVoiceCallService> the_ofono_voice_call_service();
     std::shared_ptr<TemporarySuspendInhibition> the_temporary_suspend_inhibition();
@@ -93,6 +94,7 @@ private:
     std::shared_ptr<DeviceConfig> device_config;
     std::shared_ptr<DeviceQuirks> device_quirks;
     std::shared_ptr<Filesystem> filesystem;
+    std::shared_ptr<LightControl> light_control;
     std::shared_ptr<LightSensor> light_sensor;
     std::shared_ptr<Log> log;
     std::shared_ptr<ModemPowerControl> modem_power_control;
