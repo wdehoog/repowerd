@@ -96,7 +96,7 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     indicatorLightStates[UnreadNotifications].color = 0x006400; // dark green
     indicatorLightStates[UnreadNotifications].flashMode = LIGHT_FLASH_TIMED;
     indicatorLightStates[UnreadNotifications].flashOnMS = 1000;
-    indicatorLightStates[UnreadNotifications].flashOffMS = 0;
+    indicatorLightStates[UnreadNotifications].flashOffMS = 3000;
     indicatorLightStates[UnreadNotifications].brightnessMode = BRIGHTNESS_MODE_USER;
 
     indicatorLightStates[BluetoothEnabled].color = 0x0000FF; // blue
@@ -155,31 +155,48 @@ void repowerd::UBPortsLightControl::start_processing()
                 signal_name, parameters);
         });
 
-    /*dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
-        dbus_connection,
-        dbus_im_name,
-        dbus_im_interface,
-        nullptr,
-        dbus_im_path,
-        [this] (
-            GDBusConnection* connection,
-            gchar const* sender,
-            gchar const* object_path,
-            gchar const* interface_name,
-            gchar const* signal_name,
-            GVariant* parameters)
-        {
-            handle_dbus_signal(
-                connection, sender, object_path, interface_name,
-                signal_name, parameters);
-        });*/
-
     try {
         dbus_connection.request_name(dbus_lightcontrol_servicename);
     } catch (...) {
         log->log(log_tag, "Exception while requesting dbus name: %s", dbus_lightcontrol_servicename);
     }
 
+    // listen to session bus
+    char * sbAddress = getenv("DBUS_SESSION_BUS_ADDRESS");
+    log->log(log_tag, "dbus session address: %s", sbAddress);
+    if(sbAddress != NULL && strlen(sbAddress) > 0) {
+
+        try {
+            dbus_session_connection = new DBusConnectionHandle(sbAddress);
+            if(dbus_session_connection == NULL) {
+                log->log(log_tag, "faile to create new DBusConnectionHandle for session bus");
+            } else {
+
+                dbus_signal_handler_registration = dbus_event_loop.register_signal_handler(
+                        *dbus_session_connection,
+                        NULL, //"com.canonical.indicator.messages",  // bus name
+                        "org.gtk.Actions",                   // interface
+                        "Changed",                           // signal 
+                        "/com/canonical/indicator/messages", // path
+                        [this] (
+                            GDBusConnection* connection,
+                            gchar const* sender,
+                            gchar const* object_path,
+                            gchar const* interface_name,
+                            gchar const* signal_name,
+                            GVariant* parameters)
+                        {
+                        handle_dbus_signal(
+                                connection, sender, object_path, interface_name,
+                                signal_name, parameters);
+                        });
+
+            }
+        } catch (std::exception& e) {
+            log->log(log_tag, "Exception while registering signal handler for session bus: %s", e.what());
+        }
+    }
+    
 }
 
 static repowerd::UBPortsLightControl::LightEvent getLightEventFromString(char const * str) {
@@ -282,6 +299,8 @@ void repowerd::UBPortsLightControl::dbus_unknown_method(
     log->log(log_tag, "dbus_unknown_method(%s,%s)", sender.c_str(), name.c_str());
 }
 
+static bool hasNewMessage = false;
+
 void repowerd::UBPortsLightControl::handle_dbus_signal(
     GDBusConnection*, // connection
     gchar const* sender_cstr,
@@ -295,6 +314,7 @@ void repowerd::UBPortsLightControl::handle_dbus_signal(
     std::string const interface_name{interface_name_cstr ? interface_name_cstr : ""};
     std::string const signal_name{signal_name_cstr ? signal_name_cstr : ""};
 
+    log->log(log_tag, "handle_dbus_signal %s:%s:%s:%s", sender_cstr, object_path_cstr, interface_name_cstr, signal_name_cstr);
     if (sender == "org.freedesktop.DBus" &&
         object_path == "/org/freedesktop/DBus" &&
         interface_name == "org.freedesktop.DBus" &&
@@ -307,6 +327,55 @@ void repowerd::UBPortsLightControl::handle_dbus_signal(
 
         log->log(log_tag, "dbus owner changed(%s,%s,%s)",
                  name, old_owner, new_owner);
+    } 
+    else if (//sender == "com.canonical.indicator.messages" && why is this a number like 1.54?
+        object_path == "/com/canonical/indicator/messages" &&
+        interface_name == "org.gtk.Actions" &&
+        signal_name == "Changed")
+    {
+        // dump 1
+        //log->log(log_tag, "print: %s", g_variant_print(parameters, true));
+        // dump and parse
+        gchar *vs;
+        for(gsize i = 0; i < g_variant_n_children(parameters); i++) {
+            g_autoptr(GVariant) child = g_variant_get_child_value (parameters, i);
+            vs = g_variant_print(child, true);
+            log->log(log_tag, "  Child %" G_GSIZE_FORMAT ": %s -> %s", i, g_variant_get_type_string (child), vs);
+            vs = g_variant_print(child, true);
+            if(strstr(vs, "<{'icon':") != NULL || strstr(vs, "<{'icons':") != NULL) {
+                hasNewMessage = strstr(vs, "indicator-messages-new") != NULL;
+            }
+        }
+
+        // load icons
+        /*GVariantIter iter;
+        GVariant *vvalue;
+        gchar *key, *vs;
+        bool hasIcon; 
+        bool hasNewMessage = false; 
+
+        g_variant_iter_init (&iter, parameters);
+        while (g_variant_iter_loop (&iter, "{sv}", &key, &vvalue)) {
+            hasIcon = false; 
+            if (strcmp(key, "icon")==0)
+                hasIcon = true; 
+            else if (strcmp(key, "icons")==0)
+                hasIcon = true;
+            if(hasIcon) {
+                vs = g_variant_print(vvalue, true);
+                log->log(log_tag, "  icon: %s", vs);
+                if(strstr(vs, "indicator-messages-new") != NULL)
+                    hasNewMessage = true; 
+            }
+        }*/
+
+        if(hasNewMessage) 
+            log->log(log_tag, "UnreadNotifications ACTIVE");
+        else
+            log->log(log_tag, "UnreadNotifications INACTIVE");
+        lightEventsActive[LE_UnreadNotifications] = hasNewMessage ? 1 : 0;
+        update_light_state();
+
     }
         
 }
@@ -473,14 +542,17 @@ void repowerd::UBPortsLightControl::notify_display_state(DisplayState displaySta
 }
 
 void repowerd::UBPortsLightControl::update_light_state() {
-    log->log(log_tag, "update_light_state ds: %d, bs: %d", displayState, batteryInfo.state);
+    log->log(log_tag, "update_light_state displayState: %d, batteryState: %d", displayState, batteryInfo.state);
+    //for(int i=0;i<LE_NUM_ITEMS;i++) {
+    //    log->log(log_tag, "  [%d]: enabled=%d, active=%d", i, lightEventsEnabled[i], lightEventsActive[i]);
+    //}
 
     // show charging and full but only when display is off
     if(displayState == DisplayOff) {
         if(lightEventsEnabled[LE_BatteryLow] && lightEventsActive[LE_BatteryLow])
             updateLight(&indicatorLightStates[BatteryLow]);
         else if(lightEventsEnabled[LE_UnreadNotifications] && lightEventsActive[LE_UnreadNotifications])
-            updateLight(&indicatorLightStates[UnreadNotifications]);
+            return; // UnreadNotifications is handled by unity updateLight(&indicatorLightStates[UnreadNotifications]);
         else if(lightEventsEnabled[LE_BluetoothEnabled] && lightEventsActive[LE_BluetoothEnabled])
             updateLight(&indicatorLightStates[BluetoothEnabled]);
         else if(lightEventsEnabled[LE_BatteryFull] && lightEventsActive[LE_BatteryFull])

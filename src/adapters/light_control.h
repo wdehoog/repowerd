@@ -76,11 +76,11 @@ protected:
 
     std::shared_ptr<Log> const log;
 
+    // for system bus
     DBusConnectionHandle dbus_connection;
     DBusEventLoop dbus_event_loop;
     HandlerRegistration dbus_signal_handler_registration;
     HandlerRegistration name_owner_changed_handler_registration;
-
 
     BatteryInfo batteryInfo;
     DisplayState displayState;
@@ -93,10 +93,23 @@ protected:
     bool lightEventsActive[LE_NUM_ITEMS];  // 1 for active, 0 for inactive
     bool lightEventsEnabled[LE_NUM_ITEMS]; // 1 for enabled (used), 0 for disabled (ignored)
 
+
+    // for session bus
+    DBusConnectionHandle * dbus_session_connection;
+    DBusEventLoop dbus_session_event_loop;
+    void handle_dbus_session_signal(
+            GDBusConnection* connection,
+            gchar const* sender,
+            gchar const* object_path,
+            gchar const* interface_name,
+            gchar const* signal_name,
+            GVariant* parameters);
+
     // These need to be at the end, so that handlers are unregistered first on
     // destruction, to avoid accessing other members if an event arrives
     // on destruction.
     HandlerRegistration lightcontrol_handler_registration;
+    HandlerRegistration dbus_session_signal_handler_registration;
 
 };
 
