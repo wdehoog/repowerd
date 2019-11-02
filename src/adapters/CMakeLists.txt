@@ -35,6 +35,7 @@ set(
     event_loop_timer.cpp
     fd.cpp
     libsuspend_system_power_control.cpp
+    light_control.cpp
     logind_session_tracker.cpp
     logind_system_power_control.cpp
     monotone_spline.cpp
