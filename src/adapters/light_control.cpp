@@ -74,6 +74,9 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     memset(lightEventsActive, 0, sizeof(lightEventsActive)); // inactive
     memset(lightEventsEnabled, 1, sizeof(lightEventsEnabled)); // enabled
 
+    memset(&prevLightState, 0, sizeof(prevLightState));
+    invalidatePrevLightState();
+
     // ToDo: load from DeviceConfig of System xxx
     indicatorLightStates[BatteryCharging].color = 0xFFFFFF; // white
     indicatorLightStates[BatteryCharging].flashMode = LIGHT_FLASH_TIMED;
@@ -320,13 +323,13 @@ void repowerd::UBPortsLightControl::handle_dbus_signal(
         interface_name == "org.freedesktop.DBus" &&
         signal_name == "NameOwnerChanged")
     {
-        char const* name = "";
-        char const* old_owner = "";
-        char const* new_owner = "";
-        g_variant_get(parameters, "(&s&s&s)", &name, &old_owner, &new_owner);
+        //char const* name = "";
+        //char const* old_owner = "";
+        //char const* new_owner = "";
+        //g_variant_get(parameters, "(&s&s&s)", &name, &old_owner, &new_owner);
 
-        log->log(log_tag, "dbus owner changed(%s,%s,%s)",
-                 name, old_owner, new_owner);
+        //log->log(log_tag, "dbus owner changed(%s,%s,%s)",
+        //         name, old_owner, new_owner);
     } 
     else if (//sender == "com.canonical.indicator.messages" && why is this a number like 1.54?
         object_path == "/com/canonical/indicator/messages" &&
@@ -411,18 +414,31 @@ void repowerd::UBPortsLightControl::updateLight() {
     updateLight(&state);
 }
 
+void repowerd::UBPortsLightControl::invalidatePrevLightState() {
+    prevLightState.flashOnMS++;
+    prevLightState.flashOffMS++;
+}
+
 void repowerd::UBPortsLightControl::updateLight(light_state_t * lightState) {
     //log->log(log_tag, "updateLight");
     if (!init()) {
         log->log(log_tag, "  No lights device");
         return;
     }
+
+    if(memcmp(&prevLightState, lightState, sizeof(prevLightState))==0) {
+        log->log(log_tag, "updateLight skipped (same as prev)");
+        return;
+    }
+
     if (m_lightDevice->set_light(m_lightDevice, lightState) != 0) {
 	    log->log(log_tag, "Failed to update the light");
-    } else
+    } else {
       m_state = lightState->flashMode != LIGHT_FLASH_NONE 
           ? UBPortsLightControl::On 
           : UBPortsLightControl::Off;
+      memcpy(&prevLightState, lightState, sizeof(prevLightState));
+    }
 }
 
 void repowerd::UBPortsLightControl::setColor(uint r, uint g, uint b) {
@@ -486,10 +502,6 @@ bool repowerd::UBPortsLightControl::init() {
 
 void repowerd::UBPortsLightControl::turnOff() {
     log->log(log_tag, "turnOff");
-    if (!init()) {
-        log->log(log_tag, "  No lights device");
-        return;
-    }
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
     state.color = 0x00000000;
@@ -497,19 +509,11 @@ void repowerd::UBPortsLightControl::turnOff() {
     state.flashOnMS = 0;
     state.flashOffMS = 0;
     state.brightnessMode = 0;
-
-    if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-        log->log(log_tag, "Failed to turn the light off");
-    }
+    updateLight(&state);
 }
 
 void repowerd::UBPortsLightControl::turnOn() {
     log->log(log_tag, "turnOn");
-    if (!init()) {
-        log->log(log_tag, "  No lights device");
-        return;
-    }
-    // pulse
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
     state.color = m_color;
@@ -517,10 +521,7 @@ void repowerd::UBPortsLightControl::turnOn() {
     state.flashOnMS = m_onMs;
     state.flashOffMS = m_offMs;
     state.brightnessMode = BRIGHTNESS_MODE_USER;
-
-    if (m_lightDevice->set_light(m_lightDevice, &state) != 0) {
-        log->log(log_tag, "Failed to turn the light on");
-    }
+    updateLight(&state);
 }
 
 void repowerd::UBPortsLightControl::notify_battery_info(BatteryInfo * batteryInfo) {
@@ -529,9 +530,9 @@ void repowerd::UBPortsLightControl::notify_battery_info(BatteryInfo * batteryInf
     this->batteryInfo.state = batteryInfo->state;
     this->batteryInfo.percentage = batteryInfo->percentage;
     this->batteryInfo.temperature = batteryInfo->temperature;
-    lightEventsActive[LE_BatteryCharging] = batteryInfo->state == 1; // charging
+    lightEventsActive[LE_BatteryCharging] = batteryInfo->state == 1; // 1 means charging
+    lightEventsActive[LE_BatteryFull] = batteryInfo->state == 1 && batteryInfo->percentage >= 100;
     lightEventsActive[LE_BatteryLow] = batteryInfo->percentage < 10;
-    lightEventsActive[LE_BatteryFull] = batteryInfo->percentage >= 100;
     update_light_state();
 }
 
@@ -551,9 +552,10 @@ void repowerd::UBPortsLightControl::update_light_state() {
     if(displayState == DisplayOff) {
         if(lightEventsEnabled[LE_BatteryLow] && lightEventsActive[LE_BatteryLow])
             updateLight(&indicatorLightStates[BatteryLow]);
-        else if(lightEventsEnabled[LE_UnreadNotifications] && lightEventsActive[LE_UnreadNotifications])
+        else if(lightEventsEnabled[LE_UnreadNotifications] && lightEventsActive[LE_UnreadNotifications]) {
+            invalidatePrevLightState();
             return; // UnreadNotifications is handled by unity updateLight(&indicatorLightStates[UnreadNotifications]);
-        else if(lightEventsEnabled[LE_BluetoothEnabled] && lightEventsActive[LE_BluetoothEnabled])
+        } else if(lightEventsEnabled[LE_BluetoothEnabled] && lightEventsActive[LE_BluetoothEnabled])
             updateLight(&indicatorLightStates[BluetoothEnabled]);
         else if(lightEventsEnabled[LE_BatteryFull] && lightEventsActive[LE_BatteryFull])
             updateLight(&indicatorLightStates[BatteryFull]);

@@ -92,6 +92,8 @@ protected:
     light_state_t indicatorLightStates[LIS_NUM_ITEMS];
     bool lightEventsActive[LE_NUM_ITEMS];  // 1 for active, 0 for inactive
     bool lightEventsEnabled[LE_NUM_ITEMS]; // 1 for enabled (used), 0 for disabled (ignored)
+    light_state_t prevLightState;
+    void invalidatePrevLightState();
 
 
     // for session bus
