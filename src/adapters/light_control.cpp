@@ -16,14 +16,14 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
 <node>
   <interface name='com.ubports.lightcontrol'>
     <!-- 
-        set_led:
+        set_led_attributes:
         @color the rgb value of the color to use. Must be a hex string (example: 0xFF1234);
         @on_ms time (ms) the led must be on while pulsing
         @off_ms time (ms) the led must be off while pulsing. Set to 0 to have the led continuously on.
 
-        Set the led. 
+        Set some attributes of the led. 
     -->
-    <method name='set_led'>
+    <method name='set_led_attributes'>
       <arg name='color' type='s' direction='in'/>
       <arg name='on_ms' type='i' direction='in'/>
       <arg name='off_ms' type='i' direction='in'/>
@@ -99,7 +99,7 @@ void repowerd::UBPortsLightControl::handle_dbus_method_call(
     std::string const sender{sender_cstr ? sender_cstr : ""};
     std::string const method_name{method_name_cstr ? method_name_cstr : ""};
 
-    if (method_name == "set_led")
+    if (method_name == "set_led_attributes")
     {
         char const* color{""};
         int32_t onMS{-1};
