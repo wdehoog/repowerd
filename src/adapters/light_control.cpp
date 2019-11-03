@@ -17,7 +17,7 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
   <interface name='com.ubports.lightcontrol'>
     <!-- 
         set_led_attributes:
-        @color the rgb value of the color to use. Must be a hex string (example: 0xFF1234);
+        @color the rgb value of the color to use. Must be a hex string (examples: 0xFF1234, FF1234);
         @on_ms time (ms) the led must be on while pulsing
         @off_ms time (ms) the led must be off while pulsing. Set to 0 to have the led continuously on.
 
@@ -252,7 +252,7 @@ void repowerd::UBPortsLightControl::turn_off() {
     log->log(log_tag, "turnOff");
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
-    state.color = 0x00000000;
+    state.color = 0;
     state.flashMode = LIGHT_FLASH_NONE;
     state.flashOnMS = 0;
     state.flashOffMS = 0;

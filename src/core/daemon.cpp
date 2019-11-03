@@ -23,6 +23,7 @@
 #include "client_settings.h"
 #include "display_power_control.h"
 #include "lid.h"
+#include "light_control.h"
 #include "notification_service.h"
 #include "null_state_machine.h"
 #include "power_button.h"
@@ -51,6 +52,7 @@ repowerd::Daemon::Daemon(DaemonConfig& config)
       client_requests{config.the_client_requests()},
       client_settings{config.the_client_settings()},
       lid{config.the_lid()},
+      light_control{config.the_light_control()},
       notification_service{config.the_notification_service()},
       power_button{config.the_power_button()},
       power_source{config.the_power_source()},
@@ -409,6 +411,7 @@ void repowerd::Daemon::start_event_processing()
     client_requests->start_processing();
     client_settings->start_processing();
     lid->start_processing();
+    light_control->start_processing();
     notification_service->start_processing();
     power_button->start_processing();
     power_source->start_processing();
