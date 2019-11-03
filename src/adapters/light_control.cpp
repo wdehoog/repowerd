@@ -29,6 +29,15 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
       <arg name='off_ms' type='i' direction='in'/>
     </method>
     <!-- 
+        set_led_color:
+        @color the rgb value of the color to use. Must be a hex string (examples: 0xFF1234, FF1234);
+
+        Set some attributes of the led. 
+    -->
+    <method name='set_led_color'>
+      <arg name='color' type='s' direction='in'/>
+    </method>
+    <!-- 
         turn_led_on
 
         Turn the led on.
@@ -120,6 +129,21 @@ void repowerd::UBPortsLightControl::handle_dbus_method_call(
         sStream >> m_color;
         m_on_ms = onMS;
         m_off_ms = offMS;
+
+        if (m_state == LedState::On)
+          update_light();
+
+        requestOk = true;
+    }
+    else if (method_name == "set_led_color")
+    {
+        char const* color{""};
+        g_variant_get(parameters, "(&s)", &color);
+        log->log(log_tag, "dbus_method_call(%s, %s)", method_name_cstr, color);
+
+        std::stringstream sStream;
+        sStream << std::hex << color;
+        sStream >> m_color;
 
         if (m_state == LedState::On)
           update_light();
