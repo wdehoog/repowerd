@@ -19,7 +19,7 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
         set_led:
         @color the rgb value of the color to use. Must be a hex string (example: 0xFF1234);
         @on_ms time (ms) the led must be on while pulsing
-        @off_ms time (ms) the led must be off while pulsing
+        @off_ms time (ms) the led must be off while pulsing. Set to 0 to have the led continuously on.
 
         Set the led. 
     -->
@@ -48,7 +48,7 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
 repowerd::UBPortsLightControl::UBPortsLightControl(
    std::shared_ptr<Log> const& log,
    std::string const& dbus_bus_address)
-  : m_lightDevice(0),
+  : m_light_device(0),
     m_state(LedState::Off),
     dbus_connection{dbus_bus_address},
     dbus_event_loop{"UBPortsLightControl"},
@@ -110,22 +110,22 @@ void repowerd::UBPortsLightControl::handle_dbus_method_call(
         std::stringstream sStream;
         sStream << std::hex << color;
         sStream >> m_color;
-        m_onMs = onMS;
-        m_offMs = offMS;
+        m_on_ms = onMS;
+        m_off_ms = offMS;
 
         if (m_state == LedState::On)
-          updateLight();
+          update_light();
 
         requestOk = true;
     }
     else if (method_name == "turn_led_on")
     {
-        turnOn();
+        turn_on();
         requestOk = true;
     }
     else if (method_name == "turn_led_on")
     {
-        turnOff();
+        turn_off();
         requestOk = true;
     }
 
@@ -142,45 +142,45 @@ void repowerd::UBPortsLightControl::handle_dbus_method_call(
     }
 }
 
-void repowerd::UBPortsLightControl::setState(LedState newState) {
+void repowerd::UBPortsLightControl::set_state(LedState new_state) {
     if (!init()) {
         log->log(log_tag, "setState: No lights device");
         return;
     }
 
-    if (m_state != newState) {
-        if (newState == LedState::On) {
-            turnOn();
+    if (m_state != new_state) {
+        if (new_state == LedState::On) {
+            turn_on();
         } else {
-            turnOff();
+            turn_off();
         }
-        m_state = newState;
+        m_state = new_state;
     }
 }
 
-repowerd::UBPortsLightControl::LedState repowerd::UBPortsLightControl::state() {
+repowerd::UBPortsLightControl::LedState repowerd::UBPortsLightControl::get_state() {
     return m_state;
 }
 
-void repowerd::UBPortsLightControl::updateLight() {
+void repowerd::UBPortsLightControl::update_light() {
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
     state.color = m_color;
     state.flashMode = LIGHT_FLASH_TIMED;
-    state.flashOnMS = m_onMs;
-    state.flashOffMS = m_offMs;
+    state.flashOnMS = m_on_ms;
+    state.flashOffMS = m_off_ms;
     state.brightnessMode = BRIGHTNESS_MODE_USER;
-    updateLight(&state);
+    update_light(&state);
 }
 
-void repowerd::UBPortsLightControl::updateLight(light_state_t * lightState) {
-    //log->log(log_tag, "updateLight");
+void repowerd::UBPortsLightControl::update_light(light_state_t * lightState) {
+    //log->log(log_tag, "update_light");
     if (!init()) {
         log->log(log_tag, "  No lights device");
         return;
     }
 
-    if (m_lightDevice->set_light(m_lightDevice, lightState) != 0) {
+    if (m_light_device->set_light(m_light_device, lightState) != 0) {
 	    log->log(log_tag, "Failed to update the light");
     } else {
       m_state = lightState->flashMode != LIGHT_FLASH_NONE 
@@ -189,42 +189,42 @@ void repowerd::UBPortsLightControl::updateLight(light_state_t * lightState) {
     }
 }
 
-void repowerd::UBPortsLightControl::setColor(uint r, uint g, uint b) {
+void repowerd::UBPortsLightControl::set_color(uint r, uint g, uint b) {
     log->log(log_tag, "setColor");
     uint color = (0xff << 24) | (r << 16) | (g << 8) | (b << 0);
     if (m_color != color) {
         m_color = color;
         if (m_state == LedState::On)
-            updateLight();
+            update_light();
     }
 }
 
-int repowerd::UBPortsLightControl::onMillisec() {
-    return m_onMs;
+int repowerd::UBPortsLightControl::get_on_ms() {
+    return m_on_ms;
 }
 
-void repowerd::UBPortsLightControl::setOnMillisec(int onMs) {
-    if (m_onMs != onMs) {
-        m_onMs = onMs;
+void repowerd::UBPortsLightControl::set_on_ms(int on_ms) {
+    if (m_on_ms != on_ms) {
+        m_on_ms = on_ms;
         if (m_state == LedState::On)
-            updateLight();
+            update_light();
     }
 }
 
-int repowerd::UBPortsLightControl::offMillisec() {
-    return m_offMs;
+int repowerd::UBPortsLightControl::get_off_ms() {
+    return m_off_ms;
 }
 
-void repowerd::UBPortsLightControl::setOffMillisec(int offMs) {
-    if (m_offMs != offMs) {
-        m_offMs = offMs;
+void repowerd::UBPortsLightControl::set_off_ms(int off_ms) {
+    if (m_off_ms != off_ms) {
+        m_off_ms = off_ms;
         if (m_state == LedState::On)
-            updateLight();
+            update_light();
     }
 }
 
 bool repowerd::UBPortsLightControl::init() {
-    if (m_lightDevice) {
+    if (m_light_device) {
         return true;
     }
 
@@ -236,8 +236,8 @@ bool repowerd::UBPortsLightControl::init() {
         hw_device_t* device;
         err = module->methods->open(module, LIGHT_ID_NOTIFICATIONS, &device);
         if (err == 0) {
-            m_lightDevice = (light_device_t*)device;
-            turnOff();
+            m_light_device = (light_device_t*)device;
+            turn_off();
             return true;
         } else {
             log->log(log_tag, "Failed to access notification lights");
@@ -248,7 +248,7 @@ bool repowerd::UBPortsLightControl::init() {
     return false;
 }
 
-void repowerd::UBPortsLightControl::turnOff() {
+void repowerd::UBPortsLightControl::turn_off() {
     log->log(log_tag, "turnOff");
     light_state_t state;
     memset(&state, 0, sizeof(light_state_t));
@@ -257,11 +257,11 @@ void repowerd::UBPortsLightControl::turnOff() {
     state.flashOnMS = 0;
     state.flashOffMS = 0;
     state.brightnessMode = 0;
-    updateLight(&state);
+    update_light(&state);
 }
 
-void repowerd::UBPortsLightControl::turnOn() {
+void repowerd::UBPortsLightControl::turn_on() {
     log->log(log_tag, "turnOn");
-    updateLight();
+    update_light();
 }
 

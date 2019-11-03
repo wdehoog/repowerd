@@ -26,25 +26,25 @@ public:
         std::shared_ptr<Log> const& log,
         std::string const& dbus_bus_address);
 
-    void setState(LedState newState) override;
-    LedState state() override;
-    void setColor(uint r, uint g, uint b) override;
-    int onMillisec() override;
-    void setOnMillisec(int onMs) override;
-    int offMillisec() override;
-    void setOffMillisec(int offMs) override;
+    void set_state(LedState new_state) override;
+    LedState get_state() override;
+    void set_color(uint r, uint g, uint b) override;
+    int get_on_ms() override;
+    void set_on_ms(int on_ms) override;
+    int get_off_ms() override;
+    void set_off_ms(int off_ms) override;
 
     void start_processing() override;
 
 protected:
     bool init();
-    void turnOn();
-    void turnOff();
+    void turn_on();
+    void turn_off();
 
-    light_device_t* m_lightDevice;
+    light_device_t* m_light_device;
     LedState m_state;
-    int m_onMs;
-    int m_offMs;
+    int m_on_ms;
+    int m_off_ms;
     uint m_color;
 
     void handle_dbus_method_call(
@@ -62,9 +62,9 @@ protected:
 
     std::shared_ptr<Log> const log;
 
-    void updateLight();
+    void update_light();
     void update_light_state();
-    void updateLight(light_state_t * lightState);
+    void update_light(light_state_t * lightState);
 
     // These need to be at the end, so that handlers are unregistered first on
     // destruction, to avoid accessing other members if an event arrives

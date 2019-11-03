@@ -12,13 +12,13 @@ public:
 
     virtual ~LightControl() = default;
 
-    virtual void setState(LedState newState) = 0;
-    virtual LedState state() = 0;
-    virtual void setColor(uint r, uint g, uint b) = 0;
-    virtual int onMillisec() = 0;
-    virtual void setOnMillisec(int onMs) = 0;
-    virtual int offMillisec() = 0;
-    virtual void setOffMillisec(int offMs) = 0;
+    virtual void set_state(LedState new_state) = 0;
+    virtual LedState get_state() = 0;
+    virtual void set_color(uint r, uint g, uint b) = 0;
+    virtual int get_on_ms() = 0;
+    virtual void set_on_ms(int on_ms) = 0;
+    virtual int get_off_ms() = 0;
+    virtual void set_off_ms(int off_ms) = 0;
 
     virtual void start_processing() = 0;
 
