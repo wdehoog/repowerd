@@ -26,6 +26,8 @@ public:
         std::shared_ptr<Log> const& log,
         std::string const& dbus_bus_address);
 
+    ~UBPortsLightControl();
+
     void set_state(LedState new_state) override;
     LedState get_state() override;
     void set_color(uint r, uint g, uint b) override;

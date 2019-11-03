@@ -56,6 +56,14 @@ repowerd::UBPortsLightControl::UBPortsLightControl(
     log->log(log_tag, "contructor");
 }
 
+repowerd::UBPortsLightControl::~UBPortsLightControl() {
+    if (m_light_device) {
+        hw_device_t* device = (hw_device_t*) m_light_device;
+        device->close(device);
+    }
+}
+
+
 void repowerd::UBPortsLightControl::start_processing()
 {
     log->log(log_tag, "start_processing");
