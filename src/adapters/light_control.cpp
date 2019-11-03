@@ -33,7 +33,7 @@ char const* const lightcontrol_service_introspection = R"(<!DOCTYPE node PUBLIC 
 
         Turn the led on.
     -->
-    <method name='turm_led_on'>
+    <method name='turn_led_on'>
     </method>
     <!-- 
         turn_led_off
@@ -80,8 +80,8 @@ void repowerd::UBPortsLightControl::start_processing()
 
     try {
         dbus_connection.request_name(dbus_lightcontrol_servicename);
-    } catch (...) {
-        log->log(log_tag, "Exception while requesting dbus name: %s", dbus_lightcontrol_servicename);
+    } catch (std::exception const& e) {
+        log->log(log_tag, "Exception while requesting dbus name %s: %s", dbus_lightcontrol_servicename, e.what());
     }
 
 }
@@ -123,7 +123,7 @@ void repowerd::UBPortsLightControl::handle_dbus_method_call(
         turn_on();
         requestOk = true;
     }
-    else if (method_name == "turn_led_on")
+    else if (method_name == "turn_led_off")
     {
         turn_off();
         requestOk = true;
