@@ -75,6 +75,11 @@ std::shared_ptr<repowerd::DisplayPowerEventSink> rt::DaemonConfig::the_display_p
     return the_mock_display_power_event_sink();
 }
 
+std::shared_ptr<repowerd::LightControl> rt::DaemonConfig::the_light_control()
+{
+    return NULL; // ToDo the_fake_light_control();
+}
+
 std::shared_ptr<repowerd::Lid> rt::DaemonConfig::the_lid()
 {
     return the_fake_lid();
